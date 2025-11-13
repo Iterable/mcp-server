@@ -1,0 +1,106 @@
+{
+  "name": "@iterable/mcp",
+  "version": "1.0.3",
+  "description": "Model Context Protocol server for Iterable API",
+  "keywords": [
+    "mcp",
+    "iterable",
+    "api",
+    "server",
+    "model-context-protocol"
+  ],
+  "author": "Greg Methvin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Iterable/mcp-server.git"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "iterable-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "TOOLS.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pnpm": {
+    "minimumReleaseAge": 4320,
+    "minimumReleaseAgeExclude": [
+      "@iterable/*"
+    ]
+  },
+  "scripts": {
+    "build": "pnpm lint:fix && tsc --project tsconfig.build.json && pnpm update-tools && chmod +x dist/index.js",
+    "build:clean": "rm -rf dist && pnpm build",
+    "build:dev": "tsc --incremental && pnpm update-tools && chmod +x dist/index.js",
+    "build:watch": "tsc --incremental --watch",
+    "check": "pnpm format:check && tsc --noEmit && eslint \"src/**/*.ts\" \"tests/**/*.ts\" --quiet",
+    "dev": "tsx watch src/index.ts",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" --log-level=warn",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" --log-level=warn",
+    "install-dev": "pnpm install && pnpm build && npm link --force --silent",
+    "install-dev:claude-desktop": "pnpm install-dev && node dist/index.js setup --claude-desktop --local",
+    "install-dev:claude-desktop:debug": "pnpm install-dev && node dist/index.js setup --claude-desktop --debug --local",
+    "install-dev:claude-code": "pnpm install-dev && node dist/index.js setup --claude-code --local",
+    "install-dev:claude-code:debug": "pnpm install-dev && node dist/index.js setup --claude-code --debug --local",
+    "install-dev:cursor": "pnpm install-dev && node dist/index.js setup --cursor --local",
+    "install-dev:cursor:debug": "pnpm install-dev && node dist/index.js setup --cursor --debug --local",
+    "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix --quiet",
+    "prepublishOnly": "pnpm build",
+    "prestart": "pnpm build",
+    "pretest": "pnpm --silent build",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:integration": "jest --testPathPatterns=integration",
+    "test:unit": "jest --testPathPatterns=unit",
+    "test:watch": "jest --watch",
+    "update-tools": "node scripts/update-tools.js"
+  },
+  "dependencies": {
+    "@alcyone-labs/zod-to-json-schema": "4.0.10",
+    "@iterable/api": "0.2.0",
+    "@modelcontextprotocol/sdk": "1.18.1",
+    "@types/json-schema": "7.0.15",
+    "boxen": "8.0.1",
+    "chalk": "5.6.2",
+    "cli-table3": "0.6.5",
+    "commander": "14.0.2",
+    "figlet": "1.9.3",
+    "gradient-string": "3.0.0",
+    "inquirer": "12.10.0",
+    "ora": "9.0.0",
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@jest/globals": "30.2.0",
+    "@swc/core": "1.15.0",
+    "@swc/jest": "0.2.39",
+    "@types/figlet": "1.7.0",
+    "@types/gradient-string": "1.1.6",
+    "@types/inquirer": "9.0.9",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.10.0",
+    "@typescript-eslint/eslint-plugin": "8.46.3",
+    "@typescript-eslint/parser": "8.46.3",
+    "esbuild": "0.25.12",
+    "eslint": "9.39.1",
+    "eslint-plugin-simple-import-sort": "12.1.1",
+    "jest": "30.2.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  },
+  "sideEffects": false
+}
