@@ -50,8 +50,6 @@ describe("MCP Server Setup Configuration", () => {
         command: "/path/to/node",
         args: ["-y", "@iterable/mcp"],
         env: {
-          ITERABLE_API_KEY: "test-key",
-          ITERABLE_BASE_URL: "https://api.iterable.com",
           ITERABLE_USER_PII: "true",
           ITERABLE_ENABLE_WRITES: "true",
           ITERABLE_ENABLE_SENDS: "false",
@@ -61,8 +59,7 @@ describe("MCP Server Setup Configuration", () => {
       expect(mcpConfig.type).toBe("stdio");
       expect(mcpConfig.command).toBeTruthy();
       expect(Array.isArray(mcpConfig.args)).toBe(true);
-      expect(mcpConfig.env).toHaveProperty("ITERABLE_API_KEY");
-      expect(mcpConfig.env).toHaveProperty("ITERABLE_BASE_URL");
+      // API keys are stored via KeyManager, not in config env
       expect(mcpConfig.env).toHaveProperty("ITERABLE_USER_PII");
       expect(mcpConfig.env).toHaveProperty("ITERABLE_ENABLE_WRITES");
       expect(mcpConfig.env).toHaveProperty("ITERABLE_ENABLE_SENDS");
@@ -70,8 +67,6 @@ describe("MCP Server Setup Configuration", () => {
 
     it("should include debug env vars when debug is enabled", () => {
       const debugEnv = {
-        ITERABLE_API_KEY: "test-key",
-        ITERABLE_BASE_URL: "https://api.iterable.com",
         ITERABLE_USER_PII: "true",
         ITERABLE_ENABLE_WRITES: "true",
         ITERABLE_DEBUG: "true",
@@ -170,8 +165,6 @@ describe("MCP Server Setup Configuration", () => {
         command: "npx",
         args: ["-y", "@iterable/mcp"],
         env: {
-          ITERABLE_API_KEY: "test-key",
-          ITERABLE_BASE_URL: "https://api.iterable.com",
           ITERABLE_USER_PII: "true",
           ITERABLE_ENABLE_WRITES: "true",
         },
@@ -183,7 +176,7 @@ describe("MCP Server Setup Configuration", () => {
       expect(parsed.type).toBe("stdio");
       expect(parsed.command).toBe("npx");
       expect(parsed.args).toEqual(["-y", "@iterable/mcp"]);
-      expect(parsed.env.ITERABLE_API_KEY).toBe("test-key");
+      expect(parsed.env).toHaveProperty("ITERABLE_USER_PII");
     });
 
     it("should escape special characters in JSON", () => {

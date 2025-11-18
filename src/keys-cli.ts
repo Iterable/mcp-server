@@ -46,22 +46,6 @@ export async function handleKeysCommand(): Promise<void> {
   } = await loadUi();
   const spinner = await getSpinner();
 
-  // Guard: Key management is macOS-only. Exit gracefully on other platforms.
-  if (process.platform !== "darwin") {
-    console.clear();
-    showIterableLogo(packageJson.version);
-    console.log();
-    showError("API key management is available on macOS only");
-    console.log();
-    showInfo(
-      "On Windows/Linux, set ITERABLE_API_KEY and ITERABLE_BASE_URL as environment variables."
-    );
-    showInfo(
-      "Then run: iterable-mcp setup --cursor [--claude-desktop | --claude-code]"
-    );
-    return;
-  }
-
   const { getKeyManager } = await import("./key-manager.js");
   const keyManager = getKeyManager();
 
@@ -385,6 +369,22 @@ export async function handleKeysCommand(): Promise<void> {
 
       try {
         spinner.start(`Activating key "${idOrName}"...`);
+
+        // First check if the key value is accessible
+        try {
+          await keyManager.getKey(idOrName);
+        } catch (error) {
+          spinner.fail("Failed to activate key");
+          showError(
+            error instanceof Error ? error.message : "Failed to access key"
+          );
+          console.log();
+          showInfo(
+            "This key's value is not accessible. Delete and re-add it with: iterable-mcp keys delete <id> && iterable-mcp keys add"
+          );
+          process.exit(1);
+        }
+
         await keyManager.setActiveKey(idOrName);
         spinner.stop();
 
@@ -529,6 +529,8 @@ export async function handleKeysCommand(): Promise<void> {
           { icon: icons.zap, theme: "warning" }
         );
       } catch (_error) {
+        // This only catches "key not found" errors from setActiveKey
+        // (API key inaccessibility is handled in the inner try-catch above)
         spinner.fail("Failed to activate key");
 
         const keys = await keyManager.listKeys();
@@ -709,7 +711,9 @@ export async function handleKeysCommand(): Promise<void> {
       const tips = [
         "API keys are prompted interactively - never stored in shell history",
         "Each API key is tightly coupled to its endpoint (US/EU/custom)",
-        "Keys are stored securely in macOS Keychain",
+        process.platform === "darwin"
+          ? "Keys are stored securely in macOS Keychain"
+          : "Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions",
         "Use 'keys list' to see all your keys and their details",
         "The active key (● ACTIVE) is what your AI tools will use",
         "To update a key: delete the old one and add a new one",

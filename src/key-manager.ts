@@ -1,22 +1,21 @@
 /**
- * Secure API Key Management using macOS Keychain
+ * Secure API Key Management with cross-platform support
  *
- * This module provides secure storage and management of multiple Iterable API keys
- * using macOS Keychain via the native `security` command-line tool.
+ * This module provides secure storage and management of multiple Iterable API keys.
  *
  * Platform Support:
- * - macOS: Full support with Keychain integration
- * - Windows/Linux: Not supported - use ITERABLE_API_KEY environment variable
+ * - macOS: Keys stored in Keychain, metadata in ~/.iterable-mcp/keys.json
+ * - Windows/Linux: Keys stored in ~/.iterable-mcp/keys.json with file permissions (0o600)
  *
  * Storage:
- * - API keys: Stored securely in macOS Keychain (never on disk)
- * - Metadata: Stored in ~/.iterable-mcp/keys.json (names, IDs, endpoints, timestamps)
+ * - macOS: API keys in Keychain, metadata in keys.json
+ * - Windows/Linux: API keys and metadata in keys.json
  * - Lock file: ~/.iterable-mcp/keys.lock (prevents concurrent modifications)
  *
  * Security Features:
- * - Uses spawn() with argument arrays to prevent shell injection
+ * - Uses spawn() with argument arrays to prevent shell injection (macOS)
  * - File-based locking for concurrent access protection
- * - Test-specific service name to isolate test keychain entries
+ * - Restrictive file permissions (0o600) on keys.json
  * - API key format validation (32-char lowercase hex)
  * - HTTPS-only URL validation
  * - Duplicate key detection (both names and values)
@@ -91,6 +90,8 @@ export interface ApiKeyMetadata {
   isActive: boolean;
   /** Optional per-key environment overrides (extensible for future vars) */
   env?: Record<string, string>;
+  /** API key value (stored only on Windows/Linux, not macOS which uses Keychain) */
+  apiKey?: string;
 }
 
 interface KeyStore {
@@ -107,30 +108,29 @@ export class KeyManager {
   private store: KeyStore | null = null;
   private saveLock: Promise<void> | null = null;
   private readonly execSecurity: SecurityExecutor;
+  private readonly useKeychain: boolean;
 
   /**
    * Create a new KeyManager instance
    *
    * @param configDir - Optional custom config directory (defaults to ~/.iterable-mcp)
    * @param execSecurity - Optional security command executor (for dependency injection in tests)
-   * @throws {Error} If not running on macOS and no mock executor is provided
    */
   constructor(configDir?: string, execSecurity?: SecurityExecutor) {
-    // Check if running on macOS (skip check in tests when mock is provided)
-    if (!execSecurity && process.platform !== "darwin") {
-      throw new Error(
-        "Key Manager only supports macOS. Windows and Linux users should use the ITERABLE_API_KEY environment variable."
-      );
-    }
-
     this.configDir = configDir || path.join(os.homedir(), ".iterable-mcp");
     this.metadataFile = path.join(this.configDir, "keys.json");
     this.lockFile = path.join(this.configDir, "keys.lock");
     this.execSecurity = execSecurity || execSecurityDefault;
+    // Use Keychain on macOS, JSON file storage on Windows/Linux
+    // If mock execSecurity provided (tests), use Keychain mode
+    // Override via ITERABLE_MCP_FORCE_FILE_STORAGE for testing file storage
+    this.useKeychain =
+      (!!execSecurity || process.platform === "darwin") &&
+      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
   }
 
   /**
-   * Validate metadata against keychain and clean up orphaned entries
+   * Validate metadata against keychain and clean up orphaned entries (macOS only)
    *
    * Checks if each key in metadata still exists in the keychain.
    * Removes any metadata entries that no longer have corresponding keychain entries.
@@ -139,7 +139,8 @@ export class KeyManager {
    * @returns Array of cleaned up key names (if any)
    */
   private async validateAndCleanup(): Promise<string[]> {
-    if (!this.store || this.store.keys.length === 0) {
+    // Only validate Keychain on macOS
+    if (!this.useKeychain || !this.store || this.store.keys.length === 0) {
       return [];
     }
 
@@ -486,15 +487,15 @@ export class KeyManager {
   /**
    * Add a new API key
    *
-   * Securely stores an API key in macOS Keychain and saves its metadata
-   * (name, base URL, timestamps) to disk. Each key is tightly coupled to
-   * its API endpoint.
+   * Stores an API key securely and saves its metadata to disk.
+   * - macOS: API key in Keychain, metadata in keys.json
+   * - Windows/Linux: API key and metadata in keys.json
    *
    * @param name - User-friendly name for the key (must be unique)
    * @param apiKey - 32-character lowercase hexadecimal Iterable API key
    * @param baseUrl - Iterable API base URL (must be HTTPS)
    * @returns The unique ID generated for this key
-   * @throws {Error} If the key name already exists, validation fails, or keychain storage fails
+   * @throws {Error} If the key name already exists, validation fails, or storage fails
    */
   async addKey(
     name: string,
@@ -526,26 +527,6 @@ export class KeyManager {
     // Generate unique ID
     const id = this.generateId();
 
-    // Store in macOS Keychain using security command
-    // Using spawn with argument array to prevent shell injection
-    try {
-      await this.execSecurity([
-        "add-generic-password",
-        "-a",
-        id,
-        "-s",
-        SERVICE_NAME,
-        "-w",
-        apiKey,
-        "-U",
-      ]);
-    } catch (error) {
-      logger.error("Failed to store key in keychain", { error, id });
-      throw new Error(
-        `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-
     // If this is the first key, make it active
     const isActive = this.store.keys.length === 0;
 
@@ -560,6 +541,31 @@ export class KeyManager {
         ? { env: envOverrides }
         : {}),
     };
+
+    // Store API key based on platform
+    if (this.useKeychain) {
+      // macOS: Store in Keychain
+      try {
+        await this.execSecurity([
+          "add-generic-password",
+          "-a",
+          id,
+          "-s",
+          SERVICE_NAME,
+          "-w",
+          apiKey,
+          "-U",
+        ]);
+      } catch (error) {
+        logger.error("Failed to store key in keychain", { error, id });
+        throw new Error(
+          `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    } else {
+      // Windows/Linux: Store in JSON
+      metadata.apiKey = apiKey;
+    }
 
     // Store metadata
     this.store.keys.push(metadata);
@@ -615,11 +621,13 @@ export class KeyManager {
   /**
    * Get a key by ID or name
    *
-   * Retrieves the actual API key value from macOS Keychain.
+   * Retrieves the actual API key value from storage.
+   * - macOS: Reads from Keychain
+   * - Windows/Linux: Reads from keys.json
    *
    * @param idOrName - The unique ID or user-friendly name of the key
    * @returns The API key value, or null if not found
-   * @throws {Error} If keychain access fails
+   * @throws {Error} If storage access fails
    */
   async getKey(idOrName: string): Promise<string | null> {
     if (!this.store) {
@@ -639,34 +647,44 @@ export class KeyManager {
       return null;
     }
 
-    // Get from macOS Keychain using security command
-    // Using spawn with argument array to prevent shell injection
-    let apiKey: string;
-    try {
-      apiKey = await this.execSecurity([
-        "find-generic-password",
-        "-a",
-        keyMeta.id,
-        "-s",
-        SERVICE_NAME,
-        "-w",
-      ]);
-    } catch (error) {
-      logger.error("Failed to retrieve key from keychain", {
-        error,
-        id: keyMeta.id,
-      });
-      throw new Error(
-        `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // Get API key based on platform
+    if (this.useKeychain) {
+      // macOS: Get from Keychain
+      try {
+        const apiKey = await this.execSecurity([
+          "find-generic-password",
+          "-a",
+          keyMeta.id,
+          "-s",
+          SERVICE_NAME,
+          "-w",
+        ]);
 
-    if (!apiKey) {
-      logger.error("Key not found in keychain", { id: keyMeta.id });
-      throw new Error(`Key not found in macOS Keychain for ID ${keyMeta.id}`);
-    }
+        if (!apiKey) {
+          logger.error("Key not found in keychain", { id: keyMeta.id });
+          throw new Error(
+            `Key not found in macOS Keychain for ID ${keyMeta.id}`
+          );
+        }
 
-    return apiKey;
+        return apiKey;
+      } catch (error) {
+        logger.error("Failed to retrieve key from keychain", {
+          error,
+          id: keyMeta.id,
+        });
+        throw new Error(
+          `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    } else {
+      // Windows/Linux: Get from JSON
+      if (!keyMeta.apiKey) {
+        logger.error("Key not found in metadata", { id: keyMeta.id });
+        throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
+      }
+      return keyMeta.apiKey;
+    }
   }
 
   /**
@@ -758,10 +776,9 @@ export class KeyManager {
   /**
    * Delete a key by ID
    *
-   * Removes a key from both the macOS Keychain and the metadata store.
+   * Removes a key from storage and the metadata store.
    * The currently active key cannot be deleted - you must activate a different
-   * key first. If keychain deletion fails, the metadata will still be removed
-   * and a warning will be displayed.
+   * key first.
    *
    * Note: Only accepts key ID (not name) since IDs are guaranteed unique.
    *
@@ -793,43 +810,52 @@ export class KeyManager {
       );
     }
 
-    // Delete from macOS Keychain using security command
-    // Using spawn with argument array to prevent shell injection
-    let keychainDeleted = false;
-    try {
-      await this.execSecurity([
-        "delete-generic-password",
-        "-a",
-        keyMeta.id,
-        "-s",
-        SERVICE_NAME,
-      ]);
-      keychainDeleted = true;
-    } catch (error) {
-      logger.error("Failed to delete key from keychain", {
-        error,
-        id: keyMeta.id,
-      });
-      // Continue anyway to clean up metadata, but warn the user
-    }
+    // Delete from storage based on platform
+    if (this.useKeychain) {
+      // macOS: Delete from Keychain
+      let keychainDeleted = false;
+      try {
+        await this.execSecurity([
+          "delete-generic-password",
+          "-a",
+          keyMeta.id,
+          "-s",
+          SERVICE_NAME,
+        ]);
+        keychainDeleted = true;
+      } catch (error) {
+        logger.error("Failed to delete key from keychain", {
+          error,
+          id: keyMeta.id,
+        });
+        // Continue anyway to clean up metadata, but warn the user
+      }
 
-    // Remove from metadata
-    this.store.keys.splice(index, 1);
+      // Remove from metadata
+      this.store.keys.splice(index, 1);
+      await this.saveMetadata();
 
-    await this.saveMetadata();
-
-    if (!keychainDeleted) {
-      logger.warn("Key removed from metadata but may still exist in Keychain", {
-        id: keyMeta.id,
-        name: keyMeta.name,
-      });
-      console.warn(
-        `⚠️  Warning: Key "${keyMeta.name}" removed from metadata but may still exist in Keychain.`
-      );
-      console.warn(
-        `    To manually remove: security delete-generic-password -a "${keyMeta.id}" -s "${SERVICE_NAME}"`
-      );
+      if (!keychainDeleted) {
+        logger.warn(
+          "Key removed from metadata but may still exist in Keychain",
+          {
+            id: keyMeta.id,
+            name: keyMeta.name,
+          }
+        );
+        console.warn(
+          `⚠️  Warning: Key "${keyMeta.name}" removed from metadata but may still exist in Keychain.`
+        );
+        console.warn(
+          `    To manually remove: security delete-generic-password -a "${keyMeta.id}" -s "${SERVICE_NAME}"`
+        );
+      } else {
+        logger.info("API key deleted", { id: keyMeta.id, name: keyMeta.name });
+      }
     } else {
+      // Windows/Linux: Just remove from JSON
+      this.store.keys.splice(index, 1);
+      await this.saveMetadata();
       logger.info("API key deleted", { id: keyMeta.id, name: keyMeta.name });
     }
   }
@@ -857,12 +883,12 @@ export class KeyManager {
   /**
    * Find a key by its actual API key value
    *
-   * Checks all stored keys in the keychain to see if the given API key value
-   * already exists. Useful for preventing duplicate key values.
+   * Checks all stored keys to see if the given API key value already exists.
+   * Useful for preventing duplicate key values.
    *
    * @param apiKeyValue - The API key value to search for
    * @returns The metadata of the matching key, or null if not found
-   * @throws {Error} If keychain access fails
+   * @throws {Error} If storage access fails
    */
   async findKeyByValue(apiKeyValue: string): Promise<ApiKeyMetadata | null> {
     if (!this.store) {
@@ -876,20 +902,31 @@ export class KeyManager {
     // Check each key to see if the value matches
     for (const keyMeta of this.store.keys) {
       try {
-        const storedKey = await this.execSecurity([
-          "find-generic-password",
-          "-a",
-          keyMeta.id,
-          "-s",
-          SERVICE_NAME,
-          "-w",
-        ]);
+        let storedKey: string;
+
+        if (this.useKeychain) {
+          // macOS: Check Keychain
+          storedKey = await this.execSecurity([
+            "find-generic-password",
+            "-a",
+            keyMeta.id,
+            "-s",
+            SERVICE_NAME,
+            "-w",
+          ]);
+        } else {
+          // Windows/Linux: Check JSON
+          if (!keyMeta.apiKey) {
+            continue;
+          }
+          storedKey = keyMeta.apiKey;
+        }
 
         if (storedKey.trim() === apiKeyValue) {
           return keyMeta;
         }
       } catch {
-        // Skip keys that can't be retrieved (may have been manually deleted from keychain)
+        // Skip keys that can't be retrieved (may have been manually deleted)
         continue;
       }
     }

@@ -26,7 +26,7 @@ jobs:
         with:
           run_install: false
 
-      - name: Setup Node ${{ matrix.node-version }}q
+      - name: Setup Node ${{ matrix.node-version }}
         # Latest major (v4). See: https://github.com/actions/setup-node
         uses: actions/setup-node@v4
         with:
@@ -39,8 +39,8 @@ jobs:
       - name: Typecheck and lint
         run: pnpm check
 
-      - name: Unit tests
-        run: pnpm test:unit
-
       - name: Build
         run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test:unit
