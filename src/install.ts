@@ -157,6 +157,22 @@ export function pickPersistablePermissionEnv(env: Record<string, string>): {
 }
 
 /**
+ * Remove permission flags from env (they're loaded from key manager)
+ * Returns only non-persisted env vars like debug flags
+ */
+export function omitPersistablePermissionEnv(
+  env: Record<string, string>
+): Record<string, string> {
+  const {
+    ITERABLE_USER_PII: _pii,
+    ITERABLE_ENABLE_WRITES: _writes,
+    ITERABLE_ENABLE_SENDS: _sends,
+    ...rest
+  } = env;
+  return rest;
+}
+
+/**
  * Enforce that Sends require Writes. If Sends is enabled but Writes is disabled,
  * disable Sends and optionally emit a warning.
  */
@@ -833,7 +849,7 @@ export const setupMcpServer = async (): Promise<void> => {
 
     const iterableMcpConfig = buildMcpConfig({
       ...(args.includes("--local") && { isLocal: true }),
-      env: mcpEnv,
+      env: omitPersistablePermissionEnv(mcpEnv),
       autoUpdate: useAutoUpdate,
     });
 
@@ -970,12 +986,21 @@ export const setupMcpServer = async (): Promise<void> => {
       showSection("Manual Configuration", icons.rocket);
       console.log();
 
+      const { type, command, args, env } = iterableMcpConfig;
+
       showInfo("Your API key has been stored.");
       showInfo("Add the MCP server to your AI tool with these settings:");
       console.log();
-      console.log(chalk.white.bold("  Type:") + "     stdio");
-      console.log(chalk.white.bold("  Command:") + "  npx");
-      console.log(chalk.white.bold("  Args:") + "     -y @iterable/mcp");
+      console.log(chalk.white.bold("  Type:") + `     ${type}`);
+      console.log(chalk.white.bold("  Command:") + `  ${command}`);
+      console.log(chalk.white.bold("  Args:") + `     ${args.join(" ")}`);
+      const envEntries = Object.entries(env);
+      if (envEntries.length > 0) {
+        console.log(chalk.white.bold("  Env:"));
+        envEntries.forEach(([k, v]) => {
+          console.log(chalk.gray(`    ${k}=${v}`));
+        });
+      }
       console.log();
 
       showInfo(
