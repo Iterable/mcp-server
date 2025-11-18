@@ -42,9 +42,8 @@ export async function loadMcpServerConfig(): Promise<McpServerConfig> {
     process.env.ITERABLE_BASE_URL || "https://api.iterable.com";
   let keyEnv: Record<string, string> | undefined;
 
-  // Try to load API key from KeyManager first (macOS only)
   // SAFETY: Skip keyManager in test environments to prevent production data access
-  if (process.platform === "darwin" && process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV !== "test") {
     try {
       const keyManager = getKeyManager();
       await keyManager.initialize();
@@ -90,12 +89,15 @@ export async function loadMcpServerConfig(): Promise<McpServerConfig> {
           error: sanitizedMessage,
         });
         console.error(
-          "⚠️  Warning: Failed to load API key from macOS Keychain:",
+          "⚠️  Warning: Failed to load API key from key storage:",
           sanitizedMessage
         );
 
-        // Provide helpful guidance for sync issues
-        if (sanitizedMessage.includes("could not be found")) {
+        // Provide helpful guidance for sync issues (macOS Keychain specific)
+        if (
+          process.platform === "darwin" &&
+          sanitizedMessage.includes("could not be found")
+        ) {
           console.error(
             "\n💡 This may be a sync issue. Restarting the server will automatically clean up orphaned keys."
           );

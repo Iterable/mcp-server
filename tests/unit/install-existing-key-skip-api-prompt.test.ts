@@ -14,6 +14,8 @@ describe("setup skips API key prompt when existing key selected", () => {
     const answers = [
       // When no flags: select tools
       { selectedTools: ["cursor"] },
+      // If ITERABLE_API_KEY env var is set, decline to use it (so we test existing key flow)
+      ...(process.env.ITERABLE_API_KEY ? [{ useEnvKey: false }] : []),
       // macOS: ask to use existing
       { useExisting: true },
       // choose stored key
@@ -36,19 +38,23 @@ describe("setup skips API key prompt when existing key selected", () => {
     }));
 
     // Mock KeyManager to avoid actual Keychain usage
+    const testKey = {
+      id: "id-1",
+      name: "testingouthiskey",
+      baseUrl: "https://api.iterable.com",
+      isActive: false,
+      env: {},
+    };
+
     jest.mock("../../src/key-manager.js", () => ({
       __esModule: true,
       getKeyManager: () => ({
         initialize: jest.fn(async () => {}),
-        listKeys: jest.fn(async () => [
-          {
-            id: "id-1",
-            name: "testingouthiskey",
-            baseUrl: "https://api.iterable.com",
-            isActive: false,
-            env: {},
-          },
-        ]),
+        hasKeys: jest.fn(async () => true),
+        listKeys: jest.fn(async () => [testKey]),
+        addKey: jest.fn(async (name) => `mock-id-${name}`),
+        getKey: jest.fn(async () => "a1b2c3d4e5f6789012345678901234ab"),
+        getActiveKeyMetadata: jest.fn(async () => testKey),
         setActiveKey: jest.fn(async () => {}),
         updateKeyEnv: jest.fn(async () => {}),
         findKeyByValue: jest.fn(async () => null),
@@ -65,8 +71,19 @@ describe("setup skips API key prompt when existing key selected", () => {
       showWarning: () => {},
       showError: () => {},
       showCompletion: () => {},
+      showBox: () => {},
       formatKeyValue: (_k: string, v: string) => v,
-      icons: { key: "", globe: "", zap: "" },
+      linkColor: () => (s: string) => s,
+      valueColor: () => (s: string) => s,
+      icons: {
+        key: "",
+        globe: "",
+        zap: "",
+        lock: "",
+        rocket: "",
+        fire: "",
+        bulb: "",
+      },
       createTable: () => ({ push: () => {}, toString: () => "" }),
       formatKeychainChoiceLabel: (
         name: string,
@@ -96,6 +113,7 @@ describe("setup skips API key prompt when existing key selected", () => {
 
     const { setupMcpServer } = await import("../../src/install.js");
 
+    // Test cancels at the final confirmation, so setup should complete without error
     await setupMcpServer();
 
     // Assert that no password prompt for new API key occurred
@@ -110,5 +128,13 @@ describe("setup skips API key prompt when existing key selected", () => {
       );
     });
     expect(hadPassword).toBe(false);
+
+    // Verify we did select an existing key (the test's main purpose)
+    const selectedExistingKey = promptMock.mock.calls.some((call) => {
+      const arg = call[0];
+      const questions = Array.isArray(arg) ? arg : [arg];
+      return questions.some((q: any) => q && q.name === "chosenId");
+    });
+    expect(selectedExistingKey).toBe(true);
   }, 30000);
 });

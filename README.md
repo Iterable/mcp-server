@@ -5,8 +5,6 @@
 
 With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, and Claude Code!
 
-
-
 ## What is MCP?
 
 MCP stands for Model Context Protocol. It's a new, open standard that lets AI tools (like Cursor or Claude Desktop) connect to external tools and APIs in a secure, structured way. MCP acts as a "bridge" between your AI app and platforms like Iterable, so you can ask questions or perform actions in plain English, and the AI translates those into safe API calls behind the scenes.
@@ -35,13 +33,13 @@ npx @iterable/mcp setup --advanced
 ```
 
 What you’ll choose (optional):
-- View user PII (`ITERABLE_USER_PII`)
-- Enable Writes (Create/Update/Delete actions) (`ITERABLE_ENABLE_WRITES`)
-- Enable actual sends (`ITERABLE_ENABLE_SENDS`) — requires Writes
+- Enable access to user PII (`ITERABLE_USER_PII`)
+- Enable writes (create/update/delete actions) (`ITERABLE_ENABLE_WRITES`)
+- Enable sends (campaigns/journeys/events) (`ITERABLE_ENABLE_SENDS`) — requires writes
 
 Safety notes:
-- Sends require Writes to be enabled.
-- When you use an existing Keychain key, your choices are saved per key.
+- Enabling sends requires writes to be enabled.
+- Permission settings are saved per key (see key management section below).
 - Prompts are generated from read‑only tools for extra safety.
 
 ## Prefer a global install?
@@ -53,7 +51,9 @@ iterable-mcp setup
 
 **Note:** The setup command automatically configures the correct command path.
 
-## Install from source
+Throughout this guide, commands are shown as `iterable-mcp` for brevity. If not globally installed, use `npx @iterable/mcp` instead (e.g., `npx @iterable/mcp keys list`).
+
+### Install from source
 
 ```bash
 git clone https://github.com/iterable/mcp-server.git
@@ -61,15 +61,14 @@ cd mcp-server
 pnpm install-dev:cursor  # or install-dev:claude-desktop or install-dev:claude-code
 ```
 
-## Claude Code
+### Claude Code
 
-The `setup --claude-code` command automatically configures Claude Code by running `claude mcp add` for you and stores your API key securely in macOS Keychain.
+The `setup --claude-code` command automatically configures Claude Code by running `claude mcp add` for you.
 
-Alternatively, you can run it manually:
+Alternatively, you can configure it manually:
 
 ```bash
-# Manual installation (alternative to setup --claude-code)
-# First, add your API key to the keychain (interactive prompts)
+# Add your API key first (see API Key Management section below)
 iterable-mcp keys add
 
 # Then configure Claude Code
@@ -95,15 +94,15 @@ claude mcp add-from-claude-desktop
 
 For more information, see the [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp).
 
-## Manual configuration (Cursor & Claude Desktop)
+### Manual configuration (Cursor & Claude Desktop)
 
 The above commands will automatically configure your AI tool to use the MCP server by editing the appropriate configuration file, but you can also manually edit the appropriate configuration file:
 - **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Cursor:** `~/.cursor/mcp.json`
 
-**macOS (with Keychain):**
+**Recommended: Using key manager:**
 ```bash
-# First, add your API key to the keychain (interactive prompts)
+# First, add your API key (interactive prompts)
 iterable-mcp keys add
 ```
 
@@ -119,9 +118,9 @@ Then edit your config file:
 }
 ```
 
-Note: No `env` needed on macOS - API key and base URL are loaded from Keychain.
+No `env` section needed - API key and base URL are loaded automatically.
 
-**Windows/Linux (using environment variables):**
+**Alternative: Environment variables:**
 ```json
 {
   "mcpServers": {
@@ -150,7 +149,7 @@ export ITERABLE_MCP_NPX_PATH="/path/to/custom/npx"
 npx @iterable/mcp setup --cursor
 ```
 
-Alternatively, you can manually edit your configuration file (after adding your key to the keychain):
+Alternatively, you can manually edit your configuration file (after adding your key):
 
 ```json
 {
@@ -163,7 +162,7 @@ Alternatively, you can manually edit your configuration file (after adding your 
 }
 ```
 
-Note: No `env` needed on macOS — API key and base URL are loaded from Keychain.
+No `env` section is needed if using the key manager.
 
 ## What you can do
 
@@ -185,7 +184,11 @@ Try these prompts:
 
 ### API Key Management
 
-**macOS Keychain:** API keys are stored securely in Keychain. Each key is tied to its API endpoint (US, EU, or custom).
+**Key Storage:**
+
+API keys are stored in the `~/.iterable-mcp/keys.json` file and managed via the `iterable-mcp keys` commands. On macOS the actual API key values are stored in the system Keychain. On Linux, the API key values are stored directly in the file with restricted permissions (0o600). On Windows, the file is protected by default NTFS home directory permissions.
+
+Each key is tied to its API endpoint (US, EU, or custom) and to its permissions (view PII, write operations, send messages).
 
 **How Key Selection Works:**
 - You can store multiple API keys with different names (e.g., "production", "staging", "dev")
@@ -213,14 +216,12 @@ iterable-mcp keys delete <key-id>
 # To update a key: delete the old one and add a new one with the same name
 ```
 
-**Windows/Linux:** Use `ITERABLE_API_KEY` and (optionally) `ITERABLE_BASE_URL` env vars.
-
 ### Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ITERABLE_API_KEY` | No* | Your Iterable API key (*Optional on macOS if using Keychain manager, Required on Windows and Linux) |
-| `ITERABLE_BASE_URL` | No** | Base URL for the Iterable API (**Not needed on macOS when using key manager - URL is stored with each key) |
+| `ITERABLE_API_KEY` | No* | Your Iterable API key (*Optional if using key manager, otherwise required) |
+| `ITERABLE_BASE_URL` | No** | Base URL for the Iterable API (**Not needed when using key manager - URL is stored with each key) |
 | `ITERABLE_DEBUG` | No | Set to `true` for API request logging |
 | `LOG_LEVEL` | No | Set to `debug` for troubleshooting |
 | `ITERABLE_USER_PII` | No | Set to `true` to enable tools that access user PII data (default: `false`) |
@@ -263,7 +264,7 @@ Integration tests make real API calls to Iterable and require a valid API key.
    export ITERABLE_API_KEY=your_actual_api_key
    ```
 
-2. Or on macOS, add a key to the keychain (interactive):
+2. Or add a key to key manager (interactive):
    ```bash
    iterable-mcp keys add
    ```
@@ -275,7 +276,7 @@ Integration tests make real API calls to Iterable and require a valid API key.
    pnpm test:integration
    ```
 
-**Note:** Integration tests require a valid API key (env or active macOS Keychain key). The suite fails fast if none is found.
+**Note:** Integration tests require a valid API key (env var or active key manager key). The suite fails fast if none is found.
 
 ### Development workflow
 
@@ -299,8 +300,7 @@ pnpm run install-dev
 ## Troubleshooting
 
 - Claude CLI missing: install `claude` CLI, then re-run `iterable-mcp setup --claude-code`.
-- macOS Keychain issues: Ensure Keychain is available; re-run setup. Stale locks are auto‑recovered.
-
+- macOS Keychain issues: Ensure Keychain is accessible and re-run setup if needed.
 
 ## Beta Feature Reminder
 Iterable's MCP server is currently in beta. MCP functionality may change, be

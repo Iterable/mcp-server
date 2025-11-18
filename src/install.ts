@@ -16,6 +16,14 @@ const { dirname, join } = path;
 const LOCAL_BINARY_NAME = "iterable-mcp";
 const NPX_PACKAGE_NAME = "@iterable/mcp";
 
+// Tool display names
+const TOOL_NAMES = {
+  cursor: "Cursor",
+  "claude-desktop": "Claude Desktop",
+  "claude-code": "Claude Code",
+  manual: "Manual Setup",
+} as const;
+
 // Get package version
 const packageJson = JSON.parse(
   readFileSync(
@@ -187,6 +195,7 @@ export const setupMcpServer = async (): Promise<void> => {
     ...(args.includes("--claude-desktop") ? ["claude-desktop" as const] : []),
     ...(args.includes("--cursor") ? ["cursor" as const] : []),
     ...(args.includes("--claude-code") ? ["claude-code" as const] : []),
+    ...(args.includes("--manual") ? ["manual" as const] : []),
   ];
 
   // Detect how the command was invoked
@@ -215,6 +224,7 @@ export const setupMcpServer = async (): Promise<void> => {
       [`${commandName} setup --claude-desktop`, "Configure for Claude Desktop"],
       [`${commandName} setup --cursor`, "Configure for Cursor"],
       [`${commandName} setup --claude-code`, "Configure for Claude Code"],
+      [`${commandName} setup --manual`, "Show manual config instructions"],
       [
         `${commandName} setup --cursor --claude-desktop`,
         "Configure multiple tools",
@@ -230,7 +240,7 @@ export const setupMcpServer = async (): Promise<void> => {
     console.log();
     console.log();
 
-    showSection("Key Management" + chalk.gray(" (macOS only)"), icons.key);
+    showSection("Key Management", icons.key);
     console.log();
 
     const keysTable = createTable({
@@ -303,8 +313,8 @@ export const setupMcpServer = async (): Promise<void> => {
       [
         "• API keys prompted interactively (never in shell history)",
         "• macOS: Keys stored securely in Keychain",
+        "• Windows/Linux: Keys stored in ~/.iterable-mcp with file permissions",
         "• Each key coupled to its endpoint (US/EU/custom)",
-        "• Windows/Linux: Use ITERABLE_API_KEY environment variable",
       ],
       { icon: icons.lock, theme: "info", padding: 1 }
     );
@@ -320,7 +330,9 @@ export const setupMcpServer = async (): Promise<void> => {
     showIterableLogo(packageJson.version);
 
     const { selectedTools } = await inquirer.prompt<{
-      selectedTools: Array<"cursor" | "claude-desktop" | "claude-code">;
+      selectedTools: Array<
+        "cursor" | "claude-desktop" | "claude-code" | "manual"
+      >;
     }>([
       {
         type: "checkbox",
@@ -330,6 +342,7 @@ export const setupMcpServer = async (): Promise<void> => {
           { name: "Cursor", value: "cursor" },
           { name: "Claude Desktop", value: "claude-desktop" },
           { name: "Claude Code (CLI)", value: "claude-code" },
+          { name: "Other / Manual Setup", value: "manual" },
         ],
         validate: (arr: any) =>
           Array.isArray(arr) && arr.length > 0
@@ -358,15 +371,9 @@ export const setupMcpServer = async (): Promise<void> => {
   const chalk = (await import("chalk")).default;
   showIterableLogo(packageJson.version);
   // Succinct overview of what will be configured
-  const prettyName = (t: "cursor" | "claude-desktop" | "claude-code") =>
-    t === "cursor"
-      ? "Cursor"
-      : t === "claude-desktop"
-        ? "Claude Desktop"
-        : "Claude Code";
   console.log(
     chalk.gray(
-      `Running setup to configure: ${tools.map(prettyName).join(", ")}`
+      `Running setup to configure: ${tools.map((t) => TOOL_NAMES[t]).join(", ")}`
     )
   );
   console.log();
@@ -719,11 +726,6 @@ export const setupMcpServer = async (): Promise<void> => {
       ITERABLE_ENABLE_WRITES: selectedEnv.ITERABLE_ENABLE_WRITES,
       ITERABLE_ENABLE_SENDS: selectedEnv.ITERABLE_ENABLE_SENDS,
     };
-    // On non-macOS, include API key and base URL in the written config
-    if (process.platform !== "darwin") {
-      if (apiKey) mcpEnv.ITERABLE_API_KEY = apiKey;
-      if (baseUrl) mcpEnv.ITERABLE_BASE_URL = baseUrl;
-    }
     if (args.includes("--debug")) {
       mcpEnv.ITERABLE_DEBUG = "true";
       mcpEnv.LOG_LEVEL = "debug";
@@ -836,15 +838,13 @@ export const setupMcpServer = async (): Promise<void> => {
     });
 
     // Preflight confirmation summary before applying changes
-    const prettyName = (t: "cursor" | "claude-desktop" | "claude-code") =>
-      t === "cursor"
-        ? "Cursor"
-        : t === "claude-desktop"
-          ? "Claude Desktop"
-          : "Claude Code";
     console.log(chalk.gray("Summary:"));
     console.log(
-      formatKeyValue("Tools", tools.map(prettyName).join(", "), valueColor())
+      formatKeyValue(
+        "Tools",
+        tools.map((t) => TOOL_NAMES[t]).join(", "),
+        valueColor()
+      )
     );
     if (usedKeyName) {
       console.log(formatKeyValue("API Key", usedKeyName, valueColor()));
@@ -889,9 +889,10 @@ export const setupMcpServer = async (): Promise<void> => {
     }
 
     const fileBasedTools = tools.filter(
-      (tool) => tool !== "claude-code"
+      (tool) => tool === "claude-desktop" || tool === "cursor"
     ) as Array<"claude-desktop" | "cursor">;
     const needsClaudeCode = tools.includes("claude-code");
+    const needsManual = tools.includes("manual");
 
     if (fileBasedTools.length > 0) {
       const { updateToolConfig } = await import("./utils/tool-config.js");
@@ -964,12 +965,31 @@ export const setupMcpServer = async (): Promise<void> => {
       spinner.succeed("Claude Code configured successfully");
     }
 
+    if (needsManual) {
+      console.log();
+      showSection("Manual Configuration", icons.rocket);
+      console.log();
+
+      showInfo("Your API key has been stored.");
+      showInfo("Add the MCP server to your AI tool with these settings:");
+      console.log();
+      console.log(chalk.white.bold("  Type:") + "     stdio");
+      console.log(chalk.white.bold("  Command:") + "  npx");
+      console.log(chalk.white.bold("  Args:") + "     -y @iterable/mcp");
+      console.log();
+
+      showInfo(
+        "Refer to your AI tool's documentation for configuration instructions."
+      );
+    }
+
     // Build configured tools list
     const configuredTools: string[] = [];
     if (fileBasedTools.includes("cursor")) configuredTools.push("Cursor");
     if (fileBasedTools.includes("claude-desktop"))
       configuredTools.push("Claude Desktop");
     if (needsClaudeCode) configuredTools.push("Claude Code");
+    if (needsManual) configuredTools.push("your AI tool");
 
     const toolsList =
       configuredTools.length === 1
@@ -983,6 +1003,7 @@ export const setupMcpServer = async (): Promise<void> => {
     // Success!
     console.log();
     const nextSteps = [
+      ...(needsManual ? ["Configure your AI tool as described above"] : []),
       `Restart ${toolsList} to load the new configuration`,
       "Start using Iterable MCP tools in your conversations",
       ...(needsClaudeCode
