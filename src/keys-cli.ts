@@ -484,6 +484,7 @@ export async function handleKeysCommand(): Promise<void> {
                 () => {}
               );
 
+              // Add new registration with inherited stdio to show Claude CLI output
               await new Promise<void>((resolve, reject) => {
                 const child = spawn(
                   "claude",

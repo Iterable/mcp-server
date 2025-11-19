@@ -956,18 +956,10 @@ export const setupMcpServer = async (): Promise<void> => {
 
       const configJson = JSON.stringify(iterableMcpConfig);
 
-      // Remove existing config
-      try {
-        await new Promise<void>((resolve) => {
-          const child = spawn("claude", ["mcp", "remove", "iterable"], {
-            stdio: "ignore",
-          });
-          child.on("close", () => resolve());
-          child.on("error", () => resolve()); // Ignore errors
-        });
-      } catch {
-        // Ignore errors
-      }
+      // Remove existing config (ignore errors)
+      await execFileAsync("claude", ["mcp", "remove", "iterable"]).catch(
+        () => {}
+      );
 
       spinner.start("Configuring Claude Code...");
 
