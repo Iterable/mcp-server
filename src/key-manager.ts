@@ -3,22 +3,18 @@
  *
  * This module provides secure storage and management of multiple Iterable API keys.
  *
- * Platform Support:
- * - macOS: Keys stored in Keychain, metadata in ~/.iterable-mcp/keys.json
- * - Windows/Linux: Keys stored in ~/.iterable-mcp/keys.json with file permissions (0o600)
- *
- * Storage:
- * - macOS: API keys in Keychain, metadata in keys.json
- * - Windows/Linux: API keys and metadata in keys.json
- * - Lock file: ~/.iterable-mcp/keys.lock (prevents concurrent modifications)
+ * Storage Strategy:
+ * - macOS: API keys in Keychain, metadata in ~/.iterable-mcp/keys.json
+ * - Windows: API keys and metadata in ~/.iterable-mcp/keys.json
+ * - Linux: API keys and metadata in ~/.iterable-mcp/keys.json (mode 0o600)
+ * - Lock file: ~/.iterable-mcp/keys.lock prevents concurrent modifications
  *
  * Security Features:
- * - Uses spawn() with argument arrays to prevent shell injection (macOS)
- * - File-based locking for concurrent access protection
- * - Restrictive file permissions (0o600) on keys.json
  * - API key format validation (32-char lowercase hex)
- * - HTTPS-only URL validation
+ * - HTTPS-only URL validation (except localhost)
  * - Duplicate key detection (both names and values)
+ * - File-based locking for concurrent access protection
+ * - Restrictive file permissions where supported (Linux/macOS)
  */
 
 import { logger } from "@iterable/api";
@@ -90,7 +86,7 @@ export interface ApiKeyMetadata {
   isActive: boolean;
   /** Optional per-key environment overrides (extensible for future vars) */
   env?: Record<string, string>;
-  /** API key value (stored only on Windows/Linux, not macOS which uses Keychain) */
+  /** API key value (only present when not using Keychain storage) */
   apiKey?: string;
 }
 
@@ -121,9 +117,8 @@ export class KeyManager {
     this.metadataFile = path.join(this.configDir, "keys.json");
     this.lockFile = path.join(this.configDir, "keys.lock");
     this.execSecurity = execSecurity || execSecurityDefault;
-    // Use Keychain on macOS, JSON file storage on Windows/Linux
-    // If mock execSecurity provided (tests), use Keychain mode
-    // Override via ITERABLE_MCP_FORCE_FILE_STORAGE for testing file storage
+    // Use Keychain on macOS (or when mock execSecurity provided for tests)
+    // Can be overridden via ITERABLE_MCP_FORCE_FILE_STORAGE=true
     this.useKeychain =
       (!!execSecurity || process.platform === "darwin") &&
       process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
@@ -487,9 +482,7 @@ export class KeyManager {
   /**
    * Add a new API key
    *
-   * Stores an API key securely and saves its metadata to disk.
-   * - macOS: API key in Keychain, metadata in keys.json
-   * - Windows/Linux: API key and metadata in keys.json
+   * Stores an API key securely (Keychain on macOS, file on other platforms).
    *
    * @param name - User-friendly name for the key (must be unique)
    * @param apiKey - 32-character lowercase hexadecimal Iterable API key
@@ -542,7 +535,7 @@ export class KeyManager {
         : {}),
     };
 
-    // Store API key based on platform
+    // Store API key
     if (this.useKeychain) {
       // macOS: Store in Keychain
       try {
@@ -622,8 +615,6 @@ export class KeyManager {
    * Get a key by ID or name
    *
    * Retrieves the actual API key value from storage.
-   * - macOS: Reads from Keychain
-   * - Windows/Linux: Reads from keys.json
    *
    * @param idOrName - The unique ID or user-friendly name of the key
    * @returns The API key value, or null if not found
@@ -647,7 +638,7 @@ export class KeyManager {
       return null;
     }
 
-    // Get API key based on platform
+    // Get API key
     if (this.useKeychain) {
       // macOS: Get from Keychain
       try {
@@ -694,7 +685,7 @@ export class KeyManager {
    * Only one key can be active at a time.
    *
    * @returns The active API key value, or null if no key is active
-   * @throws {Error} If keychain access fails
+   * @throws {Error} If storage access fails
    */
   async getActiveKey(): Promise<string | null> {
     if (!this.store) {
@@ -717,7 +708,7 @@ export class KeyManager {
    * Get the active key metadata
    *
    * Returns metadata for the currently active key without retrieving the
-   * actual API key value from Keychain.
+   * actual API key value.
    *
    * @returns The active key metadata, or null if no key is active
    * @throws {Error} If the key store is not initialized
@@ -810,7 +801,7 @@ export class KeyManager {
       );
     }
 
-    // Delete from storage based on platform
+    // Delete from storage
     if (this.useKeychain) {
       // macOS: Delete from Keychain
       let keychainDeleted = false;
@@ -939,13 +930,13 @@ export class KeyManager {
    *
    * Adds an API key to the key manager with a default name if it doesn't
    * already exist. This is used during the migration path from environment
-   * variable-based configuration to secure keychain storage.
+   * variable-based configuration to key manager storage.
    *
    * @param apiKey - The 32-character lowercase hexadecimal API key to migrate
    * @param baseUrl - The Iterable API base URL for this key
    * @param name - The name to assign (defaults to "default")
    * @returns The unique ID of the migrated key (existing or newly created)
-   * @throws {Error} If validation fails or keychain storage fails
+   * @throws {Error} If validation fails or storage fails
    */
   async migrateLegacyKey(
     apiKey: string,
