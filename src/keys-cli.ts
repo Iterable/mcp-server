@@ -14,6 +14,7 @@ import { promisify } from "util";
 const { dirname, join } = path;
 
 import { getSpinner, loadUi } from "./utils/cli-env.js";
+import { getKeyStorageMessage } from "./utils/formatting.js";
 import { promptForApiKey } from "./utils/password-prompt.js";
 
 const execFileAsync = promisify(execFile);
@@ -149,7 +150,7 @@ export async function handleKeysCommand(): Promise<void> {
             chalk.cyan("keys activate <name>") +
             " to switch between keys",
           "Use " + chalk.cyan("keys add") + " to add a new API key",
-          "Keys are stored securely in macOS Keychain",
+          getKeyStorageMessage(),
         ];
 
         showBox("Quick Tips", tips, {
@@ -316,7 +317,7 @@ export async function handleKeysCommand(): Promise<void> {
         );
         console.log();
 
-        showSuccess("Your API key is now stored securely in macOS Keychain");
+        showSuccess(`Your API key "${name}" is now stored`);
 
         // Offer to set newly added key as active
         const { activateNow } = await inquirer.prompt([
@@ -656,7 +657,7 @@ export async function handleKeysCommand(): Promise<void> {
         console.log(formatKeyValue("ID", resolved, chalk.gray));
         console.log();
 
-        showSuccess("Key removed from macOS Keychain");
+        showSuccess("Key removed successfully");
       } catch (error) {
         spinner.fail("Failed to delete key");
         showError(error instanceof Error ? error.message : "Unknown error");
@@ -716,9 +717,7 @@ export async function handleKeysCommand(): Promise<void> {
       const tips = [
         "API keys are prompted interactively - never stored in shell history",
         "Each API key is tightly coupled to its endpoint (US/EU/custom)",
-        process.platform === "darwin"
-          ? "Keys are stored securely in macOS Keychain"
-          : "Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions",
+        getKeyStorageMessage(),
         "Use 'keys list' to see all your keys and their details",
         "The active key (● ACTIVE) is what your AI tools will use",
         "To update a key: delete the old one and add a new one",

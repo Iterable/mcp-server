@@ -1,7 +1,10 @@
 /* eslint-disable simple-import-sort/imports */
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
-import { formatKeychainChoiceLabelPlain } from "../../src/utils/formatting";
+import {
+  formatKeychainChoiceLabelPlain,
+  getKeyStorageMessage,
+} from "../../src/utils/formatting";
 
 describe("formatKeychainChoiceLabel", () => {
   it("includes name and endpoint, excludes id", () => {
@@ -47,5 +50,74 @@ describe("formatKeychainChoiceLabel", () => {
     expect(label).toContain("PII: Off");
     expect(label).toContain("Writes: On");
     expect(label).toContain("Sends: Off");
+  });
+});
+
+describe("getKeyStorageMessage", () => {
+  let originalPlatform: string;
+
+  beforeEach(() => {
+    originalPlatform = process.platform;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", {
+      value: originalPlatform,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("returns macOS Keychain message on darwin", () => {
+    Object.defineProperty(process, "platform", {
+      value: "darwin",
+      writable: true,
+      configurable: true,
+    });
+    expect(getKeyStorageMessage()).toBe(
+      "Keys are stored securely in macOS Keychain"
+    );
+  });
+
+  it("returns file message on win32", () => {
+    Object.defineProperty(process, "platform", {
+      value: "win32",
+      writable: true,
+      configurable: true,
+    });
+    expect(getKeyStorageMessage()).toBe(
+      "Keys are stored in ~/.iterable-mcp/keys.json"
+    );
+  });
+
+  it("returns file with permissions message on linux", () => {
+    Object.defineProperty(process, "platform", {
+      value: "linux",
+      writable: true,
+      configurable: true,
+    });
+    expect(getKeyStorageMessage()).toBe(
+      "Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions"
+    );
+  });
+
+  it("adds bullet point prefix when requested", () => {
+    Object.defineProperty(process, "platform", {
+      value: "darwin",
+      writable: true,
+      configurable: true,
+    });
+    expect(getKeyStorageMessage(true)).toBe(
+      "• Keys are stored securely in macOS Keychain"
+    );
+  });
+
+  it("omits bullet point by default", () => {
+    Object.defineProperty(process, "platform", {
+      value: "darwin",
+      writable: true,
+      configurable: true,
+    });
+    expect(getKeyStorageMessage()).not.toContain("• ");
   });
 });
