@@ -32,22 +32,14 @@ import { isHttpsOrLocalhost, isLocalhostHost } from "./utils/url.js";
 const SERVICE_NAME = "iterable-mcp";
 
 /**
- * Safely execute PowerShell command by piping script to stdin
- * This avoids exposing secrets in process arguments
+ * Safely execute macOS security command with proper argument escaping
+ * Uses spawn to prevent shell injection vulnerabilities
  */
-async function execPowerShell(
-  script: string,
-  envOverrides?: NodeJS.ProcessEnv
-): Promise<string> {
+async function execSecurityDefault(args: string[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    const child = spawn(
-      "powershell",
-      ["-NoProfile", "-NonInteractive", "-Command", "-"],
-      {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env, ...envOverrides },
-      }
-    );
+    const child = spawn("security", args, {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     let stdout = "";
     let stderr = "";
@@ -61,56 +53,10 @@ async function execPowerShell(
     });
 
     child.on("error", (error: Error) => {
-      reject(
-        new Error(`Failed to execute PowerShell command: ${error.message}`)
-      );
-    });
-
-    child.on("close", (code: number) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        // Sanitize stderr to avoid leaking secrets if they were printed
-        const sanitizedStderr = stderr.trim();
-        reject(
-          new Error(
-            `PowerShell command failed with code ${code}: ${sanitizedStderr || stdout.trim()}`
-          )
-        );
-      }
-    });
-
-    child.stdin.write(script);
-    child.stdin.end();
-  });
-}
-
-/**
- * Safely execute macOS security command with proper argument escaping
- * Uses spawn to prevent shell injection vulnerabilities
- */
-async function execSecurityDefault(args: string[]): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const child = spawn("security", args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    child.on("error", (error) => {
       reject(new Error(`Failed to execute security command: ${error.message}`));
     });
 
-    child.on("close", (code) => {
+    child.on("close", (code: number | null) => {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
@@ -174,16 +120,20 @@ export class KeyManager {
     this.metadataFile = path.join(this.configDir, "keys.json");
     this.lockFile = path.join(this.configDir, "keys.lock");
     this.execSecurity = execSecurity || execSecurityDefault;
-    // Use Keychain on macOS (or when mock execSecurity provided for tests)
+
+    // Determine storage method based on platform
     // Can be overridden via ITERABLE_MCP_FORCE_FILE_STORAGE=true
+    const forceFileStorage =
+      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE === "true";
+
+    // Use Keychain on macOS (or when mock execSecurity provided for tests on non-Windows)
     this.useKeychain =
-      (!!execSecurity || process.platform === "darwin") &&
-      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
+      !forceFileStorage &&
+      process.platform === "darwin" &&
+      (!!execSecurity || process.platform === "darwin");
 
     // Use DPAPI on Windows
-    this.useDpapi =
-      process.platform === "win32" &&
-      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
+    this.useDpapi = !forceFileStorage && process.platform === "win32";
   }
 
   /**
@@ -545,28 +495,44 @@ export class KeyManager {
    * Encrypt data using Windows DPAPI
    */
   private async encryptWindows(text: string): Promise<string> {
-    // Pass secret via environment variable to avoid injection and logging leaks
-    const script = `
-      Add-Type -AssemblyName System.Security
-      $bytes = [System.Text.Encoding]::UTF8.GetBytes($env:ITERABLE_MCP_SECRET)
-      $protected = [System.Security.Cryptography.ProtectedData]::Protect($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
-      [Convert]::ToBase64String($protected)
-    `;
-    return execPowerShell(script, { ITERABLE_MCP_SECRET: text });
+    // Use native DPAPI module for better performance and reliability
+    if (process.platform === "win32") {
+      try {
+        const { Dpapi } = await import("@primno/dpapi");
+        const buffer = Buffer.from(text, "utf-8");
+        const encrypted = Dpapi.protectData(buffer, null, "CurrentUser");
+        return Buffer.from(encrypted).toString("base64");
+      } catch (error) {
+        // If native module fails, log the error and re-throw
+        logger.error("DPAPI native module failed", { error });
+        throw error;
+      }
+    }
+    throw new Error("DPAPI encryption is only supported on Windows");
   }
 
   /**
    * Decrypt data using Windows DPAPI
    */
   private async decryptWindows(encryptedBase64: string): Promise<string> {
-    // Pass input via environment variable for consistency and safety
-    const script = `
-      Add-Type -AssemblyName System.Security
-      $bytes = [Convert]::FromBase64String($env:ITERABLE_MCP_SECRET)
-      $unprotected = [System.Security.Cryptography.ProtectedData]::Unprotect($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
-      [System.Text.Encoding]::UTF8.GetString($unprotected)
-    `;
-    return execPowerShell(script, { ITERABLE_MCP_SECRET: encryptedBase64 });
+    // Use native DPAPI module for better performance and reliability
+    if (process.platform === "win32") {
+      try {
+        const { Dpapi } = await import("@primno/dpapi");
+        const encryptedBuffer = Buffer.from(encryptedBase64, "base64");
+        const decrypted = Dpapi.unprotectData(
+          encryptedBuffer,
+          null,
+          "CurrentUser"
+        );
+        return Buffer.from(decrypted).toString("utf-8");
+      } catch (error) {
+        // If native module fails, log the error and re-throw
+        logger.error("DPAPI native module failed", { error });
+        throw error;
+      }
+    }
+    throw new Error("DPAPI decryption is only supported on Windows");
   }
 
   /**
@@ -933,7 +899,6 @@ export class KeyManager {
           keyMeta.id,
           "-s",
           SERVICE_NAME,
-          "-w",
         ]);
         keychainDeleted = true;
       } catch (error) {

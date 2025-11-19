@@ -10,8 +10,6 @@ import {
   it,
   jest,
 } from "@jest/globals";
-import * as child_process from "child_process";
-import { EventEmitter } from "events";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -21,10 +19,14 @@ import {
   type SecurityExecutor,
 } from "../../src/key-manager.js";
 
-// Mock child_process.spawn
-jest.mock("child_process", () => {
+// Mock @primno/dpapi module
+jest.mock("@primno/dpapi", () => {
   return {
-    spawn: jest.fn(),
+    Dpapi: {
+      protectData: jest.fn(),
+      unprotectData: jest.fn(),
+    },
+    isPlatformSupported: true,
   };
 });
 
@@ -32,7 +34,8 @@ describe("KeyManager Windows DPAPI", () => {
   let tempDir: string;
   let keyManager: KeyManagerClass;
   let mockExecSecurity: jest.MockedFunction<SecurityExecutor>;
-  let mockSpawn: jest.MockedFunction<typeof child_process.spawn>;
+  let mockProtectData: jest.MockedFunction<any>;
+  let mockUnprotectData: jest.MockedFunction<any>;
 
   beforeEach(async () => {
     // Set up NODE_ENV for test-specific service name
@@ -44,14 +47,15 @@ describe("KeyManager Windows DPAPI", () => {
       configurable: true,
     });
 
-    // Mock spawn
-    mockSpawn = child_process.spawn as jest.MockedFunction<
-      typeof child_process.spawn
-    >;
-    // Reset mock implementation to ensure clean state
-    if (mockSpawn.mockReset) {
-      mockSpawn.mockReset();
-    }
+    // Get mocked DPAPI functions
+    const dpapiModule = await import("@primno/dpapi");
+    mockProtectData = dpapiModule.Dpapi.protectData as jest.MockedFunction<any>;
+    mockUnprotectData = dpapiModule.Dpapi
+      .unprotectData as jest.MockedFunction<any>;
+
+    // Reset mocks
+    mockProtectData.mockReset();
+    mockUnprotectData.mockReset();
 
     // Create mock for execSecurity (not used on Windows but required by constructor)
     mockExecSecurity = jest.fn(
@@ -78,37 +82,10 @@ describe("KeyManager Windows DPAPI", () => {
     jest.restoreAllMocks();
   });
 
-  /**
-   * Helper to mock PowerShell execution
-   * @param output The stdout output to simulate
-   * @param exitCode The exit code to simulate (default 0)
-   */
-  function mockPowerShell(output: string, exitCode = 0) {
-    const child = new EventEmitter() as any;
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
-    child.stdin = {
-      write: jest.fn(),
-      end: jest.fn(),
-    };
-
-    mockSpawn.mockReturnValue(child);
-
-    // Simulate process execution on next tick
-    process.nextTick(() => {
-      if (output) {
-        child.stdout.emit("data", Buffer.from(output));
-      }
-      child.emit("close", exitCode);
-    });
-
-    return child;
-  }
-
   it("should encrypt API key using DPAPI on Windows", async () => {
-    // Mock encryption response (base64 encoded "encrypted" string)
-    const encryptedValue = Buffer.from("encrypted-secret").toString("base64");
-    mockPowerShell(encryptedValue);
+    // Mock encryption response
+    const encryptedBytes = Buffer.from("encrypted-secret");
+    mockProtectData.mockReturnValue(encryptedBytes);
 
     const id = await keyManager.addKey(
       "windows-key",
@@ -122,18 +99,16 @@ describe("KeyManager Windows DPAPI", () => {
     const metadata = JSON.parse(await fs.readFile(metadataPath, "utf-8"));
 
     expect(metadata.keys).toHaveLength(1);
-    expect(metadata.keys[0].encryptedApiKey).toBe(encryptedValue);
+    expect(metadata.keys[0].encryptedApiKey).toBe(
+      encryptedBytes.toString("base64")
+    );
     expect(metadata.keys[0].apiKey).toBeUndefined(); // Should not store plaintext
 
-    // Verify PowerShell was called correctly
-    expect(mockSpawn).toHaveBeenCalledWith(
-      "powershell",
-      expect.arrayContaining(["-Command", "-"]),
-      expect.objectContaining({
-        env: expect.objectContaining({
-          ITERABLE_MCP_SECRET: "a1b2c3d4e5f6789012345678901234ab",
-        }),
-      })
+    // Verify DPAPI was called correctly
+    expect(mockProtectData).toHaveBeenCalledWith(
+      Buffer.from("a1b2c3d4e5f6789012345678901234ab", "utf-8"),
+      null,
+      "CurrentUser"
     );
   });
 
@@ -160,22 +135,20 @@ describe("KeyManager Windows DPAPI", () => {
     );
 
     // 2. Mock decryption response
-    mockPowerShell("a1b2c3d4e5f6789012345678901234ab");
+    mockUnprotectData.mockReturnValue(
+      Buffer.from("a1b2c3d4e5f6789012345678901234ab", "utf-8")
+    );
 
     // 3. Retrieve key
     const apiKey = await keyManager.getKey("test-id");
 
     expect(apiKey).toBe("a1b2c3d4e5f6789012345678901234ab");
 
-    // Verify PowerShell was called with encrypted value in env var
-    expect(mockSpawn).toHaveBeenCalledWith(
-      "powershell",
-      expect.arrayContaining(["-Command", "-"]),
-      expect.objectContaining({
-        env: expect.objectContaining({
-          ITERABLE_MCP_SECRET: encryptedValue,
-        }),
-      })
+    // Verify DPAPI was called with encrypted value
+    expect(mockUnprotectData).toHaveBeenCalledWith(
+      Buffer.from(encryptedValue, "base64"),
+      null,
+      "CurrentUser"
     );
   });
 
@@ -200,19 +173,18 @@ describe("KeyManager Windows DPAPI", () => {
       })
     );
 
-    // 2. Retrieve key (should not call PowerShell)
+    // 2. Retrieve key (should not call DPAPI)
     const apiKey = await keyManager.getKey("legacy-id");
 
     expect(apiKey).toBe("legacy-plaintext-key");
-    expect(mockSpawn).not.toHaveBeenCalled();
+    expect(mockProtectData).not.toHaveBeenCalled();
+    expect(mockUnprotectData).not.toHaveBeenCalled();
   });
 
   it("should handle encryption failure", async () => {
-    // Mock PowerShell failure
-    const child = mockPowerShell("Encryption failed", 1);
-    // We need to manually emit stderr for the error message
-    process.nextTick(() => {
-      child.stderr.emit("data", Buffer.from("System error"));
+    // Mock DPAPI failure
+    mockProtectData.mockImplementation(() => {
+      throw new Error("DPAPI encryption failed");
     });
 
     await expect(
@@ -222,5 +194,38 @@ describe("KeyManager Windows DPAPI", () => {
         "https://api.iterable.com"
       )
     ).rejects.toThrow("Failed to encrypt key with Windows DPAPI");
+  });
+
+  it("should handle decryption failure", async () => {
+    // 1. Setup: Create metadata with encrypted key
+    const encryptedValue = Buffer.from("encrypted-secret").toString("base64");
+    const metadataPath = path.join(tempDir, "keys.json");
+    await fs.mkdir(tempDir, { recursive: true });
+    await fs.writeFile(
+      metadataPath,
+      JSON.stringify({
+        keys: [
+          {
+            id: "test-id",
+            name: "windows-key",
+            baseUrl: "https://api.iterable.com",
+            created: new Date().toISOString(),
+            isActive: true,
+            encryptedApiKey: encryptedValue,
+          },
+        ],
+        version: 1,
+      })
+    );
+
+    // 2. Mock DPAPI failure
+    mockUnprotectData.mockImplementation(() => {
+      throw new Error("DPAPI decryption failed");
+    });
+
+    // 3. Attempt to retrieve key
+    await expect(keyManager.getKey("test-id")).rejects.toThrow(
+      "Failed to decrypt key with Windows DPAPI"
+    );
   });
 });
