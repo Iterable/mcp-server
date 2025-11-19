@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { promisify } from "util";
 
 import { getKeyManager } from "./key-manager.js";
+import { getKeyStorageMessage } from "./utils/formatting.js";
 
 const { dirname, join } = path;
 
@@ -341,11 +342,7 @@ export const setupMcpServer = async (): Promise<void> => {
       "Security Features",
       [
         "• API keys prompted interactively (never in shell history)",
-        process.platform === "darwin"
-          ? "• Keys are stored securely in the macOS Keychain"
-          : process.platform === "win32"
-            ? "• Keys are stored in ~/.iterable-mcp/keys.json"
-            : "• Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions",
+        getKeyStorageMessage(true),
         "• Each key coupled to its endpoint (US/EU/custom)",
       ],
       { icon: icons.lock, theme: "info", padding: 1 }
