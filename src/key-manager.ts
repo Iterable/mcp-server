@@ -5,7 +5,7 @@
  *
  * Storage Strategy:
  * - macOS: API keys in Keychain, metadata in ~/.iterable-mcp/keys.json
- * - Windows: API keys and metadata in ~/.iterable-mcp/keys.json
+ * - Windows: API keys encrypted with DPAPI in ~/.iterable-mcp/keys.json
  * - Linux: API keys and metadata in ~/.iterable-mcp/keys.json (mode 0o600)
  * - Lock file: ~/.iterable-mcp/keys.lock prevents concurrent modifications
  *
@@ -30,6 +30,58 @@ import { isHttpsOrLocalhost, isLocalhostHost } from "./utils/url.js";
 // IMPORTANT: This must be constant to avoid data loss. Never use NODE_ENV here!
 // Tests should use dependency injection with mock execSecurity instead.
 const SERVICE_NAME = "iterable-mcp";
+
+/**
+ * Safely execute PowerShell command by piping script to stdin
+ * This avoids exposing secrets in process arguments
+ */
+async function execPowerShell(
+  script: string,
+  envOverrides?: NodeJS.ProcessEnv
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(
+      "powershell",
+      ["-NoProfile", "-NonInteractive", "-Command", "-"],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env, ...envOverrides },
+      }
+    );
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(new Error(`Failed to execute PowerShell command: ${error.message}`));
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout.trim());
+      } else {
+        // Sanitize stderr to avoid leaking secrets if they were printed
+        const sanitizedStderr = stderr.trim();
+        reject(
+          new Error(
+            `PowerShell command failed with code ${code}: ${sanitizedStderr || stdout.trim()}`
+          )
+        );
+      }
+    });
+
+    child.stdin.write(script);
+    child.stdin.end();
+  });
+}
 
 /**
  * Safely execute macOS security command with proper argument escaping
@@ -88,6 +140,8 @@ export interface ApiKeyMetadata {
   env?: Record<string, string>;
   /** API key value (only present when not using Keychain storage) */
   apiKey?: string;
+  /** Encrypted API key (Windows DPAPI) */
+  encryptedApiKey?: string;
 }
 
 interface KeyStore {
@@ -105,6 +159,7 @@ export class KeyManager {
   private saveLock: Promise<void> | null = null;
   private readonly execSecurity: SecurityExecutor;
   private readonly useKeychain: boolean;
+  private readonly useDpapi: boolean;
 
   /**
    * Create a new KeyManager instance
@@ -121,6 +176,11 @@ export class KeyManager {
     // Can be overridden via ITERABLE_MCP_FORCE_FILE_STORAGE=true
     this.useKeychain =
       (!!execSecurity || process.platform === "darwin") &&
+      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
+
+    // Use DPAPI on Windows
+    this.useDpapi =
+      process.platform === "win32" &&
       process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
   }
 
@@ -480,6 +540,34 @@ export class KeyManager {
   }
 
   /**
+   * Encrypt data using Windows DPAPI
+   */
+  private async encryptWindows(text: string): Promise<string> {
+    // Pass secret via environment variable to avoid injection and logging leaks
+    const script = `
+      Add-Type -AssemblyName System.Security
+      $bytes = [System.Text.Encoding]::UTF8.GetBytes($env:ITERABLE_MCP_SECRET)
+      $protected = [System.Security.Cryptography.ProtectedData]::Protect($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+      [Convert]::ToBase64String($protected)
+    `;
+    return execPowerShell(script, { ITERABLE_MCP_SECRET: text });
+  }
+
+  /**
+   * Decrypt data using Windows DPAPI
+   */
+  private async decryptWindows(encryptedBase64: string): Promise<string> {
+    // Pass input via environment variable for consistency and safety
+    const script = `
+      Add-Type -AssemblyName System.Security
+      $bytes = [Convert]::FromBase64String($env:ITERABLE_MCP_SECRET)
+      $unprotected = [System.Security.Cryptography.ProtectedData]::Unprotect($bytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser)
+      [System.Text.Encoding]::UTF8.GetString($unprotected)
+    `;
+    return execPowerShell(script, { ITERABLE_MCP_SECRET: encryptedBase64 });
+  }
+
+  /**
    * Add a new API key
    *
    * Stores an API key securely (Keychain on macOS, file on other platforms).
@@ -555,8 +643,18 @@ export class KeyManager {
           `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
         );
       }
+    } else if (this.useDpapi) {
+      // Windows: Store encrypted in JSON
+      try {
+        metadata.encryptedApiKey = await this.encryptWindows(apiKey);
+      } catch (error) {
+        logger.error("Failed to encrypt key with DPAPI", { error, id });
+        throw new Error(
+          `Failed to encrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     } else {
-      // Windows/Linux: Store in JSON
+      // Linux/Other: Store in JSON
       metadata.apiKey = apiKey;
     }
 
@@ -668,8 +766,26 @@ export class KeyManager {
           `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
         );
       }
+    } else if (this.useDpapi) {
+      // Windows: Decrypt from JSON
+      if (keyMeta.encryptedApiKey) {
+        try {
+          return await this.decryptWindows(keyMeta.encryptedApiKey);
+        } catch (error) {
+          logger.error("Failed to decrypt key with DPAPI", { error, id: keyMeta.id });
+          throw new Error(
+            `Failed to decrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      } else if (keyMeta.apiKey) {
+        // Fallback for legacy keys stored in plaintext on Windows
+        return keyMeta.apiKey;
+      } else {
+        logger.error("Key not found in metadata", { id: keyMeta.id });
+        throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
+      }
     } else {
-      // Windows/Linux: Get from JSON
+      // Linux/Other: Get from JSON
       if (!keyMeta.apiKey) {
         logger.error("Key not found in metadata", { id: keyMeta.id });
         throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
@@ -812,6 +928,7 @@ export class KeyManager {
           keyMeta.id,
           "-s",
           SERVICE_NAME,
+          "-w",
         ]);
         keychainDeleted = true;
       } catch (error) {
@@ -905,8 +1022,17 @@ export class KeyManager {
             SERVICE_NAME,
             "-w",
           ]);
+        } else if (this.useDpapi) {
+          // Windows: Check DPAPI
+          if (keyMeta.encryptedApiKey) {
+            storedKey = await this.decryptWindows(keyMeta.encryptedApiKey);
+          } else if (keyMeta.apiKey) {
+            storedKey = keyMeta.apiKey;
+          } else {
+            continue;
+          }
         } else {
-          // Windows/Linux: Check JSON
+          // Linux/Other: Check JSON
           if (!keyMeta.apiKey) {
             continue;
           }

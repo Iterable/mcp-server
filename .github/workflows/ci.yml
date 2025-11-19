@@ -8,13 +8,14 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         node-version: [20, 22, 24]
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
         # Latest major (v5). See: https://github.com/actions/checkout
@@ -44,3 +45,7 @@ jobs:
 
       - name: Unit tests
         run: pnpm test:unit
+
+      - name: Integration tests (Windows DPAPI)
+        if: runner.os == 'Windows'
+        run: pnpm test tests/integration/windows-dpapi-live.test.ts
