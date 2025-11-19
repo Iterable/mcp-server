@@ -1,12 +1,11 @@
 /* eslint-disable no-console */
 
-import { exec, spawn } from "child_process";
+import { spawn } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import inquirer from "inquirer";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
-import { promisify } from "util";
 
 const { dirname, join } = path;
 
@@ -61,12 +60,39 @@ const TOOL_CONFIGS = {
 } as const;
 
 // Cross-platform command finder
-const findCommand = async (command: string): Promise<string> => {
+// Uses spawn() to prevent shell injection vulnerabilities
+// Exported for testing
+export const findCommand = async (command: string): Promise<string> => {
   const finder = process.platform === "win32" ? "where" : "which";
-  const { stdout } = await promisify(exec)(`${finder} ${command}`);
-  const lines = stdout.trim().split("\n");
-  if (!lines?.[0]) throw new Error(`${command} not found`);
-  return lines[0]!;
+
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(finder, [command], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(new Error(`Failed to find command: ${error.message}`));
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        const lines = stdout.trim().split("\n");
+        if (!lines?.[0]) {
+          reject(new Error(`${command} not found`));
+        } else {
+          resolve(lines[0]!);
+        }
+      } else {
+        reject(new Error(`${command} not found`));
+      }
+    });
+  });
 };
 
 // Auto-detect if running from a local development build
@@ -947,7 +973,13 @@ export const setupMcpServer = async (): Promise<void> => {
 
       // Remove existing config
       try {
-        await promisify(exec)("claude mcp remove iterable");
+        await new Promise<void>((resolve) => {
+          const child = spawn("claude", ["mcp", "remove", "iterable"], {
+            stdio: "ignore",
+          });
+          child.on("close", () => resolve());
+          child.on("error", () => resolve()); // Ignore errors
+        });
       } catch {
         // Ignore errors
       }
