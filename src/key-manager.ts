@@ -18,11 +18,12 @@
  */
 
 import { logger } from "@iterable/api";
-import { spawn } from "child_process";
+import { execFile } from "child_process";
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
+import { promisify } from "util";
 
 import { isHttpsOrLocalhost, isLocalhostHost } from "./utils/url.js";
 
@@ -31,43 +32,21 @@ import { isHttpsOrLocalhost, isLocalhostHost } from "./utils/url.js";
 // Tests should use dependency injection with mock execSecurity instead.
 const SERVICE_NAME = "iterable-mcp";
 
+const execFileAsync = promisify(execFile);
+
 /**
  * Safely execute macOS security command with proper argument escaping
- * Uses spawn to prevent shell injection vulnerabilities
+ * Uses execFile to prevent shell injection vulnerabilities
  */
 async function execSecurityDefault(args: string[]): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const child = spawn("security", args, {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on("data", (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    child.on("error", (error: Error) => {
-      reject(new Error(`Failed to execute security command: ${error.message}`));
-    });
-
-    child.on("close", (code: number | null) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        reject(
-          new Error(
-            `Security command failed with code ${code}: ${stderr.trim() || stdout.trim()}`
-          )
-        );
-      }
-    });
-  });
+  try {
+    const { stdout } = await execFileAsync("security", args);
+    return stdout.trim();
+  } catch (error: any) {
+    throw new Error(
+      `Security command failed: ${error.stderr?.toString().trim() || error.message}`
+    );
+  }
 }
 
 // Type for the security executor function (for dependency injection in tests)

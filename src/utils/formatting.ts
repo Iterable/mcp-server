@@ -1,5 +1,5 @@
 /**
- * Test-friendly, chalk-free formatter for Keychain choice labels.
+ * Test-friendly, chalk-free formatter for stored key choice labels.
  * Production coloring/wrapping is applied in ui.ts.
  */
 export function formatKeychainChoiceLabelPlain(
@@ -17,4 +17,18 @@ export function formatKeychainChoiceLabelPlain(
     ? `  PII: ${env.ITERABLE_USER_PII === "true" ? "On" : "Off"} • Writes: ${env.ITERABLE_ENABLE_WRITES === "true" ? "On" : "Off"} • Sends: ${env.ITERABLE_ENABLE_SENDS === "true" ? "On" : "Off"}`
     : "";
   return `${activeBadge}${name}  ${endpoint}${flags}`;
+}
+
+/**
+ * Get platform-specific storage description for tips/help text
+ * @param bulletPoint - Whether to include a bullet point prefix (default: false)
+ */
+export function getKeyStorageMessage(bulletPoint = false): string {
+  const prefix = bulletPoint ? "• " : "";
+  const message =
+    process.platform === "darwin"
+      ? "Keys are stored securely in macOS Keychain"
+      : "Keys are stored in ~/.iterable-mcp/keys.json" +
+        (process.platform === "win32" ? "" : " with restricted permissions");
+  return prefix + message;
 }

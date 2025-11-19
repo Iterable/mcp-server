@@ -441,7 +441,7 @@ export function showProgress(message: string, done = false): void {
 }
 
 /**
- * Format a macOS Keychain entry label for selection lists
+ * Format a stored key entry label for selection lists
  */
 export function formatKeychainChoiceLabel(
   name: string,

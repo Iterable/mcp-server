@@ -70,7 +70,7 @@ describe("MCP Protocol Integration Tests", () => {
 
     if (!isValidApiKey(resolvedApiKey)) {
       throw new Error(
-        "No valid API key found. Set ITERABLE_API_KEY or add/activate a key in macOS Keychain."
+        "No valid API key found. Set ITERABLE_API_KEY or add/activate a key using 'iterable-mcp keys'."
       );
     }
 

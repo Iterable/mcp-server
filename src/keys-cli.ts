@@ -3,7 +3,7 @@
  * CLI commands for API key management with beautiful modern UI
  */
 
-import { exec, spawn } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promises as fs, readFileSync } from "fs";
 import inquirer from "inquirer";
 import os from "os";
@@ -14,7 +14,10 @@ import { promisify } from "util";
 const { dirname, join } = path;
 
 import { getSpinner, loadUi } from "./utils/cli-env.js";
+import { getKeyStorageMessage } from "./utils/formatting.js";
 import { promptForApiKey } from "./utils/password-prompt.js";
+
+const execFileAsync = promisify(execFile);
 
 // Get package version
 const packageJson = JSON.parse(
@@ -147,7 +150,7 @@ export async function handleKeysCommand(): Promise<void> {
             chalk.cyan("keys activate <name>") +
             " to switch between keys",
           "Use " + chalk.cyan("keys add") + " to add a new API key",
-          "Keys are stored securely in macOS Keychain",
+          getKeyStorageMessage(),
         ];
 
         showBox("Quick Tips", tips, {
@@ -477,17 +480,20 @@ export async function handleKeysCommand(): Promise<void> {
 
             // Update Claude Code CLI registry if available
             try {
-              await promisify(exec)("claude --version");
+              await execFileAsync("claude", ["--version"]);
 
               // Build config using existing helper (keeps local/npx logic consistent)
               const iterableMcpConfig = buildMcpConfig({ env: mcpEnv });
               const configJson = JSON.stringify(iterableMcpConfig);
 
               // Remove existing registration (ignore errors)
-              await promisify(exec)("claude mcp remove iterable").catch(
-                () => {}
-              );
+              await execFileAsync("claude", [
+                "mcp",
+                "remove",
+                "iterable",
+              ]).catch(() => {});
 
+              // Add new registration with inherited stdio to show Claude CLI output
               await new Promise<void>((resolve, reject) => {
                 const child = spawn(
                   "claude",
