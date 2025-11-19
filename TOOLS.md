@@ -101,8 +101,8 @@
 - **get_sms_template**: Get details for specific SMS template by ID
 - **get_template_by_client_id**: Get template by client template ID
 - **get_templates**: Retrieve templates
-- **preview_email_template**: Preview email template with custom data. Returns fully rendered HTML with user, event, and/or data feed data substituted.
-- **preview_inapp_template**: Preview in-app message template with custom data. Returns fully rendered HTML with user, event, and/or data feed data substituted.
+- **preview_email_template** 🔒: Preview email template with custom data. Returns fully rendered HTML with user, event, and/or data feed data substituted.
+- **preview_inapp_template** 🔒: Preview in-app message template with custom data. Returns fully rendered HTML with user, event, and/or data feed data substituted.
 - **send_email_template_proof** 🔒✏️: Send a proof of a email template to a specific user
 - **send_inapp_template_proof** 🔒✏️: Send a proof of a in-app message template to a specific user
 - **send_push_template_proof** 🔒✏️: Send a proof of a push notification template to a specific user

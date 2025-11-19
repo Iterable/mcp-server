@@ -1,11 +1,12 @@
 /* eslint-disable no-console */
 
-import { spawn } from "child_process";
+import { execFile, spawn } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import inquirer from "inquirer";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
+import { promisify } from "util";
 
 const { dirname, join } = path;
 
@@ -59,40 +60,24 @@ const TOOL_CONFIGS = {
   cursor: path.join(os.homedir(), ".cursor", "mcp.json"),
 } as const;
 
+const execFileAsync = promisify(execFile);
+
 // Cross-platform command finder
-// Uses spawn() to prevent shell injection vulnerabilities
+// Uses execFile to prevent shell injection vulnerabilities
 // Exported for testing
 export const findCommand = async (command: string): Promise<string> => {
   const finder = process.platform === "win32" ? "where" : "which";
 
-  return new Promise<string>((resolve, reject) => {
-    const child = spawn(finder, [command], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-
-    child.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    child.on("error", (error) => {
-      reject(new Error(`Failed to find command: ${error.message}`));
-    });
-
-    child.on("close", (code) => {
-      if (code === 0) {
-        const lines = stdout.trim().split("\n");
-        if (!lines?.[0]) {
-          reject(new Error(`${command} not found`));
-        } else {
-          resolve(lines[0]!);
-        }
-      } else {
-        reject(new Error(`${command} not found`));
-      }
-    });
-  });
+  try {
+    const { stdout } = await execFileAsync(finder, [command]);
+    const lines = stdout.trim().split("\n");
+    if (!lines?.[0]) {
+      throw new Error(`${command} not found`);
+    }
+    return lines[0]!;
+  } catch (_error) {
+    throw new Error(`${command} not found`);
+  }
 };
 
 // Auto-detect if running from a local development build
