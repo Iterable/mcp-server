@@ -12,8 +12,8 @@ importers:
         specifier: 4.0.10
         version: 4.0.10(zod@4.1.11)
       '@iterable/api':
-        specifier: 0.2.0
-        version: 0.2.0(typescript@5.9.3)
+        specifier: 0.3.0
+        version: 0.3.0(typescript@5.9.3)
       '@modelcontextprotocol/sdk':
         specifier: 1.18.1
         version: 1.18.1
@@ -651,8 +651,8 @@ packages:
     resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
     engines: {node: '>=8'}
 
-  '@iterable/api@0.2.0':
-    resolution: {integrity: sha512-Qt25svfHMkO7BduM0a5DwyCHFRZmSVgoODDilRCtYr8DK1moMnF2BB5VeDm7B6+a+kXrFdU07ouO1w1cnEAQ1g==}
+  '@iterable/api@0.3.0':
+    resolution: {integrity: sha512-DDxAoLUpopTJ6Wf/Uy2bA31aN/vB2JpfT+NNVDtUPOOCugEC8NtKAtmDRY2nvJwKhvwo9NBioDoJ2/g/8kmbNw==}
     engines: {node: '>=18.0.0'}
 
   '@jest/console@30.2.0':
@@ -1174,8 +1174,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.12.2:
-    resolution: {integrity: sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==}
+  axios@1.13.2:
+    resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
 
   babel-jest@30.2.0:
     resolution: {integrity: sha512-0YiBEOxWqKkSQWL9nNGGEgndoeL0ZpWrbLMNL5u/Kaxrli3Eaxlt3ZtIDktEvXt4L/R9r3ODr2zKwGM/2BjxVw==}
@@ -2645,8 +2645,8 @@ packages:
     resolution: {integrity: sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A==}
     engines: {node: '>= 12.0.0'}
 
-  winston@3.17.0:
-    resolution: {integrity: sha512-DLiFIXYC5fMPxaRg832S6F5mJYvePtmO5G9v9IgUFPhXm9/GkXarH/TUrBAVzhTCzAj9anE/+GjrgXp/54nOgw==}
+  winston@3.18.3:
+    resolution: {integrity: sha512-NoBZauFNNWENgsnC9YpgyYwOVrl2m58PpQ8lNHjV3kosGs7KJ7Npk9pCUE+WJlawVSe8mykWDKWFSVfs3QO9ww==}
     engines: {node: '>= 12.0.0'}
 
   word-wrap@1.2.5:
@@ -3215,12 +3215,12 @@ snapshots:
 
   '@istanbuljs/schema@0.1.3': {}
 
-  '@iterable/api@0.2.0(typescript@5.9.3)':
+  '@iterable/api@0.3.0(typescript@5.9.3)':
     dependencies:
       '@t3-oss/env-core': 0.13.8(typescript@5.9.3)(zod@4.1.11)
-      axios: 1.12.2
+      axios: 1.13.2
       csv-parse: 6.1.0
-      winston: 3.17.0
+      winston: 3.18.3
       zod: 4.1.11
     transitivePeerDependencies:
       - arktype
@@ -3833,7 +3833,7 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.12.2:
+  axios@1.13.2:
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.4
@@ -5510,7 +5510,7 @@ snapshots:
       readable-stream: 3.6.2
       triple-beam: 1.4.1
 
-  winston@3.17.0:
+  winston@3.18.3:
     dependencies:
       '@colors/colors': 1.6.0
       '@dabh/diagnostics': 2.0.8
