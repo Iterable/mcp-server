@@ -48,6 +48,8 @@ export const NON_PII_TOOLS: Set<string> = new Set([
   "get_user_fields",
   "get_webhooks",
   "partial_update_catalog_item",
+  "preview_email_template",
+  "preview_inapp_template",
   "replace_catalog_item",
   "schedule_campaign",
   "send_campaign",
