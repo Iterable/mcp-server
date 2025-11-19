@@ -480,9 +480,11 @@ export async function handleKeysCommand(): Promise<void> {
               const configJson = JSON.stringify(iterableMcpConfig);
 
               // Remove existing registration (ignore errors)
-              await execFileAsync("claude", ["mcp", "remove", "iterable"]).catch(
-                () => {}
-              );
+              await execFileAsync("claude", [
+                "mcp",
+                "remove",
+                "iterable",
+              ]).catch(() => {});
 
               // Add new registration with inherited stdio to show Claude CLI output
               await new Promise<void>((resolve, reject) => {

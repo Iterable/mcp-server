@@ -20,16 +20,13 @@ describe("execFile Security", () => {
   it("should reject commands with shell metacharacters gracefully", async () => {
     // Attempt to find a command with shell injection characters
     // execFile should treat this as a literal command name (which won't exist)
-    await expect(findCommand("node; echo pwned")).rejects.toThrow(
-      "not found"
-    );
+    await expect(findCommand("node; echo pwned")).rejects.toThrow("not found");
   });
 
   it("should handle non-existent commands without shell execution", async () => {
     // This should fail cleanly without any shell interpretation
-    await expect(findCommand("this-command-does-not-exist-xyz")).rejects.toThrow(
-      "not found"
-    );
+    await expect(
+      findCommand("this-command-does-not-exist-xyz")
+    ).rejects.toThrow("not found");
   });
 });
-
