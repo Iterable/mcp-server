@@ -52,21 +52,21 @@ async function execPowerShell(
     let stdout = "";
     let stderr = "";
 
-    child.stdout.on("data", (data) => {
+    child.stdout.on("data", (data: Buffer) => {
       stdout += data.toString();
     });
 
-    child.stderr.on("data", (data) => {
+    child.stderr.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
-    child.on("error", (error) => {
+    child.on("error", (error: Error) => {
       reject(
         new Error(`Failed to execute PowerShell command: ${error.message}`)
       );
     });
 
-    child.on("close", (code) => {
+    child.on("close", (code: number) => {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
