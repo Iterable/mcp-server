@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
 
 import { IterableClient } from "@iterable/api";
 import { logger } from "@iterable/api";
@@ -234,6 +235,11 @@ export class IterableMcpServer {
   }
 }
 
-function createSessionId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+/**
+ * Generate a cryptographically secure session ID
+ * Uses crypto.randomUUID() for guaranteed uniqueness and unpredictability
+ * Exported for testing purposes
+ */
+export function createSessionId(): string {
+  return randomUUID();
 }
