@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { exec, spawn } from "child_process";
+import { execFile, spawn } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import inquirer from "inquirer";
 import os from "os";
@@ -62,13 +62,24 @@ const TOOL_CONFIGS = {
   cursor: path.join(os.homedir(), ".cursor", "mcp.json"),
 } as const;
 
+const execFileAsync = promisify(execFile);
+
 // Cross-platform command finder
-const findCommand = async (command: string): Promise<string> => {
+// Uses execFile to prevent shell injection vulnerabilities
+// Exported for testing
+export const findCommand = async (command: string): Promise<string> => {
   const finder = process.platform === "win32" ? "where" : "which";
-  const { stdout } = await promisify(exec)(`${finder} ${command}`);
-  const lines = stdout.trim().split("\n");
-  if (!lines?.[0]) throw new Error(`${command} not found`);
-  return lines[0]!;
+
+  try {
+    const { stdout } = await execFileAsync(finder, [command]);
+    const lines = stdout.trim().split("\n");
+    if (!lines?.[0]) {
+      throw new Error(`${command} not found`);
+    }
+    return lines[0]!;
+  } catch (_error) {
+    throw new Error(`${command} not found`);
+  }
 };
 
 // Auto-detect if running from a local development build
@@ -930,12 +941,10 @@ export const setupMcpServer = async (): Promise<void> => {
 
       const configJson = JSON.stringify(iterableMcpConfig);
 
-      // Remove existing config
-      try {
-        await promisify(exec)("claude mcp remove iterable");
-      } catch {
-        // Ignore errors
-      }
+      // Remove existing config (ignore errors)
+      await execFileAsync("claude", ["mcp", "remove", "iterable"]).catch(
+        () => {}
+      );
 
       spinner.start("Configuring Claude Code...");
 
