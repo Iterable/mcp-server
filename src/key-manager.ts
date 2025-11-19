@@ -493,46 +493,92 @@ export class KeyManager {
 
   /**
    * Encrypt data using Windows DPAPI
+   *
+   * Security: Uses native C++ bindings to Windows DPAPI (Data Protection API).
+   * - No shell execution or code evaluation
+   * - Encrypted data can only be decrypted by the same user on the same machine
+   * - Uses CurrentUser scope for user-level protection
+   * - No optional entropy parameter (null) for simplicity
+   *
+   * @param text - Plain text to encrypt (validated as 32-char hex by caller)
+   * @returns Base64-encoded encrypted blob
+   * @throws {Error} If DPAPI encryption fails or platform is not Windows
    */
   private async encryptWindows(text: string): Promise<string> {
-    // Use native DPAPI module for better performance and reliability
-    if (process.platform === "win32") {
-      try {
-        const { Dpapi } = await import("@primno/dpapi");
-        const buffer = Buffer.from(text, "utf-8");
-        const encrypted = Dpapi.protectData(buffer, null, "CurrentUser");
-        return Buffer.from(encrypted).toString("base64");
-      } catch (error) {
-        // If native module fails, log the error and re-throw
-        logger.error("DPAPI native module failed", { error });
-        throw error;
-      }
+    if (process.platform !== "win32") {
+      throw new Error("DPAPI encryption is only supported on Windows");
     }
-    throw new Error("DPAPI encryption is only supported on Windows");
+
+    try {
+      // Dynamic import to avoid loading native module on non-Windows platforms
+      const { Dpapi } = await import("@primno/dpapi");
+
+      // Convert string to buffer (UTF-8 encoding)
+      const plainBuffer = Buffer.from(text, "utf-8");
+
+      // Encrypt using DPAPI (returns Uint8Array)
+      // Parameters: data, optionalEntropy (null), scope ("CurrentUser")
+      const encryptedBytes = Dpapi.protectData(
+        plainBuffer,
+        null,
+        "CurrentUser"
+      );
+
+      // Convert to Buffer and encode as base64 for JSON storage
+      return Buffer.from(encryptedBytes).toString("base64");
+    } catch (error) {
+      logger.error("DPAPI encryption failed", { error });
+      throw new Error(
+        `Failed to encrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
    * Decrypt data using Windows DPAPI
+   *
+   * Security: Uses native C++ bindings to Windows DPAPI.
+   * - No shell execution or code evaluation
+   * - Only the user who encrypted the data can decrypt it
+   * - Validates base64 input before decryption
+   *
+   * @param encryptedBase64 - Base64-encoded encrypted blob
+   * @returns Decrypted plain text
+   * @throws {Error} If DPAPI decryption fails, data is corrupt, or platform is not Windows
    */
   private async decryptWindows(encryptedBase64: string): Promise<string> {
-    // Use native DPAPI module for better performance and reliability
-    if (process.platform === "win32") {
-      try {
-        const { Dpapi } = await import("@primno/dpapi");
-        const encryptedBuffer = Buffer.from(encryptedBase64, "base64");
-        const decrypted = Dpapi.unprotectData(
-          encryptedBuffer,
-          null,
-          "CurrentUser"
-        );
-        return Buffer.from(decrypted).toString("utf-8");
-      } catch (error) {
-        // If native module fails, log the error and re-throw
-        logger.error("DPAPI native module failed", { error });
-        throw error;
-      }
+    if (process.platform !== "win32") {
+      throw new Error("DPAPI decryption is only supported on Windows");
     }
-    throw new Error("DPAPI decryption is only supported on Windows");
+
+    // Validate base64 format to prevent invalid data from reaching DPAPI
+    if (!/^[A-Za-z0-9+/]+=*$/.test(encryptedBase64)) {
+      throw new Error("Invalid encrypted data format (not valid base64)");
+    }
+
+    try {
+      // Dynamic import to avoid loading native module on non-Windows platforms
+      const { Dpapi } = await import("@primno/dpapi");
+
+      // Decode base64 to buffer
+      const encryptedBuffer = Buffer.from(encryptedBase64, "base64");
+
+      // Decrypt using DPAPI (returns Uint8Array)
+      // Parameters: encryptedData, optionalEntropy (null), scope ("CurrentUser")
+      const decryptedBytes = Dpapi.unprotectData(
+        encryptedBuffer,
+        null,
+        "CurrentUser"
+      );
+
+      // Convert to Buffer and decode as UTF-8
+      return Buffer.from(decryptedBytes).toString("utf-8");
+    } catch (error) {
+      logger.error("DPAPI decryption failed", { error });
+      throw new Error(
+        `Failed to decrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
