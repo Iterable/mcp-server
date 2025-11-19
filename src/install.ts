@@ -8,6 +8,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
 
+import { getKeyManager } from "./key-manager.js";
+
 const { dirname, join } = path;
 
 // IMPORTANT: UI imports are loaded lazily inside functions to avoid ESM issues in Jest/CommonJS.
@@ -328,8 +330,11 @@ export const setupMcpServer = async (): Promise<void> => {
       "Security Features",
       [
         "• API keys prompted interactively (never in shell history)",
-        "• macOS: Keys stored securely in Keychain",
-        "• Windows/Linux: Keys stored in ~/.iterable-mcp with file permissions",
+        process.platform === "darwin"
+          ? "• Keys are stored securely in the macOS Keychain"
+          : process.platform === "win32"
+            ? "• Keys are stored in ~/.iterable-mcp/keys.json"
+            : "• Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions",
         "• Each key coupled to its endpoint (US/EU/custom)",
       ],
       { icon: icons.lock, theme: "info", padding: 1 }
@@ -427,9 +432,8 @@ export const setupMcpServer = async (): Promise<void> => {
       }
     }
 
-    // 2) If not using env key, offer using an existing Keychain key (macOS)
-    if (!apiKey && process.platform === "darwin") {
-      const { getKeyManager } = await import("./key-manager.js");
+    // 2) If not using env key, offer using an existing stored key
+    if (!apiKey) {
       const km = getKeyManager();
       const keys = await km.listKeys().catch(() => [] as any[]);
       if (Array.isArray(keys) && keys.length > 0) {
@@ -437,7 +441,7 @@ export const setupMcpServer = async (): Promise<void> => {
           {
             type: "confirm",
             name: "useExisting",
-            message: `Found ${keys.length} existing Iterable API key${keys.length === 1 ? "" : "s"} in macOS Keychain. Use one of these?`,
+            message: `Found ${keys.length} existing Iterable API key${keys.length === 1 ? "" : "s"} in key storage. Use one of these?`,
             default: true,
           },
         ]);
@@ -474,7 +478,7 @@ export const setupMcpServer = async (): Promise<void> => {
             showError(
               e instanceof Error
                 ? e.message
-                : "Failed to load selected key from Keychain"
+                : "Failed to load selected key from storage"
             );
             process.exit(1);
           }
@@ -535,159 +539,143 @@ export const setupMcpServer = async (): Promise<void> => {
     );
     console.log();
 
-    // Step 3: Store the key securely (macOS only). On other platforms, use env vars.
+    // Step 3: Store the key securely
     let existingKeyWithValue: any = null;
-    if (process.platform === "darwin") {
-      const { getKeyManager } = await import("./key-manager.js");
-      const keyManager = getKeyManager();
+    const keyManager = getKeyManager();
 
-      spinner.start("Initializing secure key storage...");
-      await keyManager.initialize();
-      spinner.succeed("Key storage ready");
+    spinner.start("Initializing secure key storage...");
+    await keyManager.initialize();
+    spinner.succeed("Key storage ready");
 
-      // Check if key already exists
-      if (!usedExistingKey && apiKey) {
-        spinner.start("Checking for existing keys...");
-        existingKeyWithValue = await keyManager.findKeyByValue(
-          apiKey as string
-        );
-        spinner.stop();
-      }
+    // Check if key already exists
+    if (!usedExistingKey && apiKey) {
+      spinner.start("Checking for existing keys...");
+      existingKeyWithValue = await keyManager.findKeyByValue(apiKey as string);
+      spinner.stop();
+    }
 
-      if (usedExistingKey) {
-        // Offer to activate the selected existing key if not already active
-        if (!selectedExistingMeta?.isActive) {
-          const { activateExisting } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "activateExisting",
-              message: `Set "${selectedExistingMeta?.name}" as your active API key?`,
-              default: true,
-            },
-          ]);
-          if (activateExisting) {
-            await keyManager.setActiveKey(selectedExistingMeta!.id);
-            showSuccess(
-              `"${selectedExistingMeta?.name}" is now your active key`
-            );
-          } else {
-            showInfo("Keeping your current active key");
-          }
+    if (usedExistingKey) {
+      // Offer to activate the selected existing key if not already active
+      if (!selectedExistingMeta?.isActive) {
+        const { activateExisting } = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "activateExisting",
+            message: `Set "${selectedExistingMeta?.name}" as your active API key?`,
+            default: true,
+          },
+        ]);
+        if (activateExisting) {
+          await keyManager.setActiveKey(selectedExistingMeta!.id);
+          showSuccess(`"${selectedExistingMeta?.name}" is now your active key`);
         } else {
-          showSuccess(
-            `"${selectedExistingMeta?.name}" is already your active key`
-          );
-        }
-      } else if (existingKeyWithValue) {
-        showInfo(
-          `This API key is already stored as "${existingKeyWithValue.name}"`
-        );
-        usedKeyName = existingKeyWithValue.name;
-
-        if (!existingKeyWithValue.isActive) {
-          const { activateExisting } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "activateExisting",
-              message: `Set "${existingKeyWithValue.name}" as your active API key?`,
-              default: true,
-            },
-          ]);
-
-          if (activateExisting) {
-            await keyManager.setActiveKey(existingKeyWithValue.id);
-            showSuccess(
-              `"${existingKeyWithValue.name}" is now your active key`
-            );
-          } else {
-            showInfo("Keeping your current active key");
-          }
-        } else {
-          showSuccess(
-            `"${existingKeyWithValue.name}" is already your active key`
-          );
+          showInfo("Keeping your current active key");
         }
       } else {
-        // New key - prompt for name
-        const { newKeyName } = await inquirer.prompt([
+        showSuccess(
+          `"${selectedExistingMeta?.name}" is already your active key`
+        );
+      }
+    } else if (existingKeyWithValue) {
+      showInfo(
+        `This API key is already stored as "${existingKeyWithValue.name}"`
+      );
+      usedKeyName = existingKeyWithValue.name;
+
+      if (!existingKeyWithValue.isActive) {
+        const { activateExisting } = await inquirer.prompt([
           {
-            type: "input",
-            name: "newKeyName",
-            message: "Enter a name for this API key:",
-            default: "default",
-            validate: (input: string) => {
-              if (input && input.length > 50)
-                return "Key name must be 50 characters or less";
-              return true;
-            },
+            type: "confirm",
+            name: "activateExisting",
+            message: `Set "${existingKeyWithValue.name}" as your active API key?`,
+            default: true,
           },
         ]);
 
-        keyName = newKeyName || "default";
-
-        spinner.start("Storing API key securely in macOS Keychain...");
-        try {
-          const newKeyId = await keyManager.addKey(
-            keyName,
-            apiKey as string,
-            baseUrl as string
-          );
-          spinner.succeed("API key stored successfully!");
-
-          console.log();
-          console.log(formatKeyValue("Name", keyName, chalk.white.bold));
-          console.log(formatKeyValue("ID", newKeyId, chalk.gray));
-          console.log(
-            formatKeyValue("Endpoint", baseUrl as string, chalk.cyan)
-          );
-          console.log();
-          usedKeyName = keyName;
-
-          // Check if we should activate this key
-          const allKeys = await keyManager.listKeys();
-          if (allKeys.length > 1) {
-            const { activateNew } = await inquirer.prompt([
-              {
-                type: "confirm",
-                name: "activateNew",
-                message: `Set "${keyName}" as your active API key?`,
-                default: true,
-              },
-            ]);
-
-            if (activateNew) {
-              await keyManager.setActiveKey(newKeyId);
-              showSuccess(`"${keyName}" is now your active key`);
-            } else {
-              showInfo(
-                `Keeping your current active key. Run 'iterable-mcp keys activate "${keyName}"' to switch later.`
-              );
-            }
-          }
-        } catch (error) {
-          const { sanitizeString } = await import("./utils/sanitize.js");
-          spinner.fail("Failed to store API key");
-          console.log();
-          const msg =
-            error instanceof Error
-              ? sanitizeString(error.message)
-              : "Unknown error";
-          showError(msg);
-          console.log();
-          showInfo(
-            "Your API key was not stored. You can re-run 'iterable-mcp setup' to try again."
-          );
-          showInfo(
-            "If the problem persists, verify Keychain access and disk permissions."
-          );
-          process.exit(1);
+        if (activateExisting) {
+          await keyManager.setActiveKey(existingKeyWithValue.id);
+          showSuccess(`"${existingKeyWithValue.name}" is now your active key`);
+        } else {
+          showInfo("Keeping your current active key");
         }
+      } else {
+        showSuccess(
+          `"${existingKeyWithValue.name}" is already your active key`
+        );
       }
     } else {
-      // Non-macOS: do not use Keychain; rely on environment variables instead
-      usedKeyName =
-        usedKeyName ||
-        (process.env.ITERABLE_API_KEY ? "Environment" : undefined);
+      // New key - prompt for name
+      const { newKeyName } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "newKeyName",
+          message: "Enter a name for this API key:",
+          default: "default",
+          validate: (input: string) => {
+            if (input && input.length > 50)
+              return "Key name must be 50 characters or less";
+            return true;
+          },
+        },
+      ]);
+
+      keyName = newKeyName || "default";
+
+      spinner.start("Storing API key securely...");
+      try {
+        const newKeyId = await keyManager.addKey(
+          keyName,
+          apiKey as string,
+          baseUrl as string
+        );
+        spinner.succeed("API key stored successfully!");
+
+        console.log();
+        console.log(formatKeyValue("Name", keyName, chalk.white.bold));
+        console.log(formatKeyValue("ID", newKeyId, chalk.gray));
+        console.log(formatKeyValue("Endpoint", baseUrl as string, chalk.cyan));
+        console.log();
+        usedKeyName = keyName;
+
+        // Check if we should activate this key
+        const allKeys = await keyManager.listKeys();
+        if (allKeys.length > 1) {
+          const { activateNew } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "activateNew",
+              message: `Set "${keyName}" as your active API key?`,
+              default: true,
+            },
+          ]);
+
+          if (activateNew) {
+            await keyManager.setActiveKey(newKeyId);
+            showSuccess(`"${keyName}" is now your active key`);
+          } else {
+            showInfo(
+              `Keeping your current active key. Run 'iterable-mcp keys activate "${keyName}"' to switch later.`
+            );
+          }
+        }
+      } catch (error) {
+        const { sanitizeString } = await import("./utils/sanitize.js");
+        spinner.fail("Failed to store API key");
+        console.log();
+        const msg =
+          error instanceof Error
+            ? sanitizeString(error.message)
+            : "Unknown error";
+        showError(msg);
+        console.log();
+        showInfo(
+          "Your API key was not stored. You can re-run 'iterable-mcp setup' to try again."
+        );
+        showInfo(
+          "If the problem persists, verify storage access and disk permissions."
+        );
+        process.exit(1);
+      }
     }
 
     // Step 4: Privacy & Security Settings (Basic by default; Advanced via --advanced)
@@ -795,11 +783,8 @@ export const setupMcpServer = async (): Promise<void> => {
     console.log();
 
     // If we used an existing key, update its env overrides with chosen settings
-    if (usedKeyName && process.platform === "darwin") {
+    if (usedKeyName) {
       try {
-        const { getKeyManager } = await import("./key-manager.js");
-        const keyManager = getKeyManager();
-        await keyManager.initialize();
         await keyManager.updateKeyEnv(
           usedKeyName,
           pickPersistablePermissionEnv(mcpEnv)
