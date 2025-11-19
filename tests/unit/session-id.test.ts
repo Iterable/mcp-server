@@ -90,7 +90,10 @@ describe("Session ID Generation", () => {
     expect(positions[19]!.size).toBeLessThanOrEqual(4);
 
     // Other hex positions should have good variation (at least 2 different values in 100 samples)
-    const hexPositions = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 15, 16, 17, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35];
+    const hexPositions = [
+      0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 15, 16, 17, 20, 21, 22, 24, 25, 26,
+      27, 28, 29, 30, 31, 32, 33, 34, 35,
+    ];
 
     hexPositions.forEach((pos) => {
       expect(positions[pos]!.size).toBeGreaterThanOrEqual(2);
