@@ -14,10 +14,7 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 
-import {
-  KeyManager as KeyManagerClass,
-  type SecurityExecutor,
-} from "../../src/key-manager.js";
+import { KeyManager as KeyManagerClass } from "../../src/key-manager.js";
 
 // Mock @primno/dpapi module
 jest.mock("@primno/dpapi", () => {
@@ -33,7 +30,6 @@ jest.mock("@primno/dpapi", () => {
 describe("KeyManager Windows DPAPI", () => {
   let tempDir: string;
   let keyManager: KeyManagerClass;
-  let mockExecSecurity: jest.MockedFunction<SecurityExecutor>;
   let mockProtectData: jest.MockedFunction<any>;
   let mockUnprotectData: jest.MockedFunction<any>;
 
@@ -57,18 +53,14 @@ describe("KeyManager Windows DPAPI", () => {
     mockProtectData.mockReset();
     mockUnprotectData.mockReset();
 
-    // Create mock for execSecurity (not used on Windows but required by constructor)
-    mockExecSecurity = jest.fn(
-      async (_args: string[]) => ""
-    ) as unknown as jest.MockedFunction<SecurityExecutor>;
-
     // Create a temporary directory for test metadata
     tempDir = await fs.mkdtemp(
       path.join(os.tmpdir(), "keymanager-dpapi-test-")
     );
 
-    // Initialize KeyManager
-    keyManager = new KeyManagerClass(tempDir, mockExecSecurity);
+    // Initialize KeyManager WITHOUT execSecurity so it uses DPAPI mode on Windows
+    // Passing execSecurity would force Keychain mode for tests
+    keyManager = new KeyManagerClass(tempDir);
   });
 
   afterEach(async () => {

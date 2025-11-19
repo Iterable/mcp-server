@@ -26,9 +26,6 @@ export function formatKeychainChoiceLabelPlain(
 export function getKeyStorageMessage(bulletPoint = false): string {
   const prefix = bulletPoint ? "• " : "";
   const message =
-    process.platform === "darwin"
-      ? "Keys are stored securely in macOS Keychain"
-      : "Keys are stored in ~/.iterable-mcp/keys.json" +
-        (process.platform === "win32" ? "" : " with restricted permissions");
+    "Keys are encrypted at rest using platform-specific security (Keychain on macOS, DPAPI on Windows)";
   return prefix + message;
 }

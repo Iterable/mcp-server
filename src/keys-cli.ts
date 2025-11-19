@@ -317,13 +317,7 @@ export async function handleKeysCommand(): Promise<void> {
         );
         console.log();
 
-        const storageMsg =
-          process.platform === "darwin"
-            ? "macOS Keychain"
-            : process.platform === "win32"
-              ? "Windows DPAPI (Encrypted)"
-              : "File Storage";
-        showSuccess(`Your API key is now stored securely in ${storageMsg}`);
+        showSuccess("Your API key is now securely stored (encrypted at rest)");
 
         // Offer to set newly added key as active
         const { activateNow } = await inquirer.prompt([
@@ -663,13 +657,7 @@ export async function handleKeysCommand(): Promise<void> {
         console.log(formatKeyValue("ID", resolved, chalk.gray));
         console.log();
 
-        const storageMsg =
-          process.platform === "darwin"
-            ? "macOS Keychain"
-            : process.platform === "win32"
-              ? "Windows DPAPI"
-              : "File Storage";
-        showSuccess(`Key removed from ${storageMsg}`);
+        showSuccess("Key securely removed");
       } catch (error) {
         spinner.fail("Failed to delete key");
         showError(error instanceof Error ? error.message : "Unknown error");
@@ -729,11 +717,7 @@ export async function handleKeysCommand(): Promise<void> {
       const tips = [
         "API keys are prompted interactively - never stored in shell history",
         "Each API key is tightly coupled to its endpoint (US/EU/custom)",
-        process.platform === "darwin"
-          ? "Keys are stored securely in macOS Keychain"
-          : process.platform === "win32"
-            ? "Keys are stored securely using Windows DPAPI"
-            : "Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions",
+        getKeyStorageMessage(),
         "Use 'keys list' to see all your keys and their details",
         "The active key (● ACTIVE) is what your AI tools will use",
         "To update a key: delete the old one and add a new one",

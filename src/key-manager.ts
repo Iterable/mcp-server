@@ -105,14 +105,15 @@ export class KeyManager {
     const forceFileStorage =
       process.env.ITERABLE_MCP_FORCE_FILE_STORAGE === "true";
 
-    // Use Keychain on macOS (or when mock execSecurity provided for tests on non-Windows)
+    // Use Keychain on macOS (or when mock execSecurity provided for tests)
     this.useKeychain =
       !forceFileStorage &&
-      process.platform === "darwin" &&
-      (!!execSecurity || process.platform === "darwin");
+      (process.platform === "darwin" || !!execSecurity) &&
+      process.platform !== "win32";
 
-    // Use DPAPI on Windows
-    this.useDpapi = !forceFileStorage && process.platform === "win32";
+    // Use DPAPI on Windows (but not if mock execSecurity provided - that's for Keychain tests)
+    this.useDpapi =
+      !forceFileStorage && process.platform === "win32" && !execSecurity;
   }
 
   /**
