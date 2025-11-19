@@ -61,7 +61,9 @@ async function execPowerShell(
     });
 
     child.on("error", (error) => {
-      reject(new Error(`Failed to execute PowerShell command: ${error.message}`));
+      reject(
+        new Error(`Failed to execute PowerShell command: ${error.message}`)
+      );
     });
 
     child.on("close", (code) => {
@@ -772,7 +774,10 @@ export class KeyManager {
         try {
           return await this.decryptWindows(keyMeta.encryptedApiKey);
         } catch (error) {
-          logger.error("Failed to decrypt key with DPAPI", { error, id: keyMeta.id });
+          logger.error("Failed to decrypt key with DPAPI", {
+            error,
+            id: keyMeta.id,
+          });
           throw new Error(
             `Failed to decrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
           );

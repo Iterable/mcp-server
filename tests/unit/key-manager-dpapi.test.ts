@@ -59,7 +59,9 @@ describe("KeyManager Windows DPAPI", () => {
     ) as unknown as jest.MockedFunction<SecurityExecutor>;
 
     // Create a temporary directory for test metadata
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "keymanager-dpapi-test-"));
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "keymanager-dpapi-test-")
+    );
 
     // Initialize KeyManager
     keyManager = new KeyManagerClass(tempDir, mockExecSecurity);
@@ -222,4 +224,3 @@ describe("KeyManager Windows DPAPI", () => {
     ).rejects.toThrow("Failed to encrypt key with Windows DPAPI");
   });
 });
-

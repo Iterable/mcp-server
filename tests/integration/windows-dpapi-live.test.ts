@@ -5,13 +5,7 @@
  * using the OS DPAPI via PowerShell.
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -27,7 +21,9 @@ describeWindows("KeyManager Windows DPAPI Integration (Live)", () => {
 
   beforeEach(async () => {
     // Create a temporary directory for test metadata
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "keymanager-dpapi-live-"));
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "keymanager-dpapi-live-")
+    );
 
     // Initialize KeyManager with real execution (no mocks)
     keyManager = new KeyManager(tempDir);
@@ -70,8 +66,16 @@ describeWindows("KeyManager Windows DPAPI Integration (Live)", () => {
     const key1 = "a1b2c3d4e5f6789012345678901234ab";
     const key2 = "b1b2c3d4e5f6789012345678901234cd";
 
-    const id1 = await keyManager.addKey("key1", key1, "https://api.iterable.com");
-    const id2 = await keyManager.addKey("key2", key2, "https://api.eu.iterable.com");
+    const id1 = await keyManager.addKey(
+      "key1",
+      key1,
+      "https://api.iterable.com"
+    );
+    const id2 = await keyManager.addKey(
+      "key2",
+      key2,
+      "https://api.eu.iterable.com"
+    );
 
     const retrieved1 = await keyManager.getKey(id1);
     const retrieved2 = await keyManager.getKey(id2);
@@ -80,4 +84,3 @@ describeWindows("KeyManager Windows DPAPI Integration (Live)", () => {
     expect(retrieved2).toBe(key2);
   }, 60000);
 });
-
