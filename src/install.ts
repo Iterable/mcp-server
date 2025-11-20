@@ -127,34 +127,6 @@ export const buildMcpConfig = (options: {
 };
 
 /**
- * Merge selected env flags with key metadata env (if provided), preferring the key's
- * persisted values. This ensures the written MCP configs reflect the authoritative
- * values saved to the key after any updates in the setup flow.
- */
-export function resolveFinalMcpEnv(
-  selectedEnv: Record<string, string>,
-  keyEnv?: Record<string, string>
-): Record<string, string> {
-  const normalize = (v?: string) => (v === "true" ? "true" : "false");
-  const result = { ...selectedEnv } as Record<string, string>;
-  if (keyEnv) {
-    result.ITERABLE_USER_PII = normalize(
-      keyEnv.ITERABLE_USER_PII ?? result.ITERABLE_USER_PII
-    );
-    result.ITERABLE_ENABLE_WRITES = normalize(
-      keyEnv.ITERABLE_ENABLE_WRITES ?? result.ITERABLE_ENABLE_WRITES
-    );
-    result.ITERABLE_ENABLE_SENDS = normalize(
-      keyEnv.ITERABLE_ENABLE_SENDS ?? result.ITERABLE_ENABLE_SENDS
-    );
-  }
-  result.ITERABLE_USER_PII = normalize(result.ITERABLE_USER_PII);
-  result.ITERABLE_ENABLE_WRITES = normalize(result.ITERABLE_ENABLE_WRITES);
-  result.ITERABLE_ENABLE_SENDS = normalize(result.ITERABLE_ENABLE_SENDS);
-  return result;
-}
-
-/**
  * Pick only permission-related env flags for persistence into key metadata.
  */
 export function pickPersistablePermissionEnv(env: Record<string, string>): {
@@ -795,24 +767,13 @@ export const setupMcpServer = async (): Promise<void> => {
     }
     console.log();
 
-    // If we used an existing key, update its env overrides with chosen settings
+    // If we used an existing key, persist the chosen settings to it
     if (usedKeyName) {
       try {
         await keyManager.updateKeyEnv(
           usedKeyName,
           pickPersistablePermissionEnv(mcpEnv)
         );
-
-        // Re-read the key metadata and prefer its persisted env when writing
-        // tool configurations. This addresses cases where the key was activated
-        // during setup and ensures configs reflect the updated values.
-        const keys = await keyManager.listKeys();
-        const updatedMeta = keys.find(
-          (k) => k.name === usedKeyName || k.id === usedKeyName
-        );
-        if (updatedMeta?.env) {
-          mcpEnv = resolveFinalMcpEnv(mcpEnv, updatedMeta.env);
-        }
       } catch (err) {
         if (process.env.ITERABLE_DEBUG === "true") {
           console.warn(
@@ -822,8 +783,6 @@ export const setupMcpServer = async (): Promise<void> => {
         }
       }
     }
-    // Enforce again after merging persisted key env
-    mcpEnv = enforceSendsRequiresWrites(mcpEnv, (msg) => showWarning(msg));
 
     // Step 5: Configure AI Tools
     console.log();

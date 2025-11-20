@@ -3,21 +3,16 @@
  * CLI commands for API key management with beautiful modern UI
  */
 
-import { execFile, spawn } from "child_process";
-import { promises as fs, readFileSync } from "fs";
+import { readFileSync } from "fs";
 import inquirer from "inquirer";
-import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
-import { promisify } from "util";
 
 const { dirname, join } = path;
 
 import { getSpinner, loadUi } from "./utils/cli-env.js";
 import { getKeyStorageMessage } from "./utils/formatting.js";
 import { promptForApiKey } from "./utils/password-prompt.js";
-
-const execFileAsync = promisify(execFile);
 
 // Get package version
 const packageJson = JSON.parse(
@@ -415,108 +410,7 @@ export async function handleKeysCommand(): Promise<void> {
           console.log(formatKeyValue("User PII", pii));
           console.log(formatKeyValue("Writes", writes));
           console.log(formatKeyValue("Sends", sends));
-
-          // Sync configured AI tool JSON files to reflect the active key's flags
-          try {
-            const {
-              resolveFinalMcpEnv,
-              enforceSendsRequiresWrites,
-              buildMcpConfig,
-            } = await import("./install.js");
-            let mcpEnv = resolveFinalMcpEnv(
-              {
-                ITERABLE_USER_PII: "false",
-                ITERABLE_ENABLE_WRITES: "false",
-                ITERABLE_ENABLE_SENDS: "false",
-              },
-              meta.env as Record<string, string> | undefined
-            );
-            mcpEnv = enforceSendsRequiresWrites(mcpEnv);
-
-            // Determine file-based tool config locations (Cursor, Claude Desktop)
-            const cursorPath = path.join(os.homedir(), ".cursor", "mcp.json");
-            // macOS-only path (we already guard the command to run only on darwin)
-            const claudeDesktopPath = path.join(
-              os.homedir(),
-              "Library",
-              "Application Support",
-              "Claude",
-              "claude_desktop_config.json"
-            );
-
-            const targets = [
-              { name: "Cursor", file: cursorPath },
-              { name: "Claude Desktop", file: claudeDesktopPath },
-            ];
-
-            const { updateToolConfig } = await import("./utils/tool-config.js");
-            for (const t of targets) {
-              try {
-                const raw = await fs.readFile(t.file, "utf8").catch(() => "");
-                if (!raw) continue;
-                const existing = JSON.parse(raw || "{}");
-                if (!existing?.mcpServers?.iterable) continue;
-
-                const iterableMcpConfig = buildMcpConfig({
-                  env: {
-                    ...(existing.mcpServers.iterable.env || {}),
-                    ...mcpEnv,
-                  },
-                });
-                await updateToolConfig(t.file, iterableMcpConfig);
-                showSuccess(
-                  `${t.name} configuration synced to active key permissions`
-                );
-              } catch {
-                // Non-fatal: skip if cannot read/parse/write
-              }
-            }
-
-            // Update Claude Code CLI registry if available
-            try {
-              await execFileAsync("claude", ["--version"]);
-
-              // Build config using existing helper (keeps local/npx logic consistent)
-              const iterableMcpConfig = buildMcpConfig({ env: mcpEnv });
-              const configJson = JSON.stringify(iterableMcpConfig);
-
-              // Remove existing registration (ignore errors)
-              await execFileAsync("claude", [
-                "mcp",
-                "remove",
-                "iterable",
-              ]).catch(() => {});
-
-              // Add new registration with inherited stdio to show Claude CLI output
-              await new Promise<void>((resolve, reject) => {
-                const child = spawn(
-                  "claude",
-                  ["mcp", "add-json", "iterable", configJson],
-                  {
-                    stdio: "inherit",
-                  }
-                );
-                child.on("close", (code) => {
-                  if (code === 0) resolve();
-                  else
-                    reject(
-                      new Error(
-                        `claude mcp add-json exited with code ${code ?? "unknown"}`
-                      )
-                    );
-                });
-                child.on("error", reject);
-              });
-
-              showSuccess(
-                "Claude Code configuration synced to active key permissions"
-              );
-            } catch {
-              // If Claude CLI not installed or update fails, skip silently
-            }
-          } catch {
-            // Non-fatal: if syncing fails, continue
-          }
+          console.log();
         } else {
           console.log();
           showSuccess(`"${idOrName}" is now your active API key`);
@@ -527,10 +421,9 @@ export async function handleKeysCommand(): Promise<void> {
           [
             chalk.yellow("Restart your AI tools to use this key"),
             "",
-            chalk.gray("The new key will be used after restarting:"),
-            chalk.white("  • Cursor"),
-            chalk.white("  • Claude Desktop"),
-            chalk.white("  • Claude Code"),
+            chalk.gray(
+              "The MCP server will automatically load the active key when it starts"
+            ),
           ],
           { icon: icons.zap, theme: "warning" }
         );

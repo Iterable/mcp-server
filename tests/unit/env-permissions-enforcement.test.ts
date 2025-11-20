@@ -3,7 +3,6 @@ import { describe, expect, it, jest } from "@jest/globals";
 import {
   enforceSendsRequiresWrites,
   pickPersistablePermissionEnv,
-  resolveFinalMcpEnv,
 } from "../../src/install.js";
 
 describe("permission env enforcement and filtering", () => {
@@ -45,22 +44,5 @@ describe("permission env enforcement and filtering", () => {
     ]);
     expect(persisted.ITERABLE_USER_PII).toBe("false"); // normalized
     expect((persisted as any).ITERABLE_DEBUG).toBeUndefined();
-  });
-
-  it("resolveFinalMcpEnv normalizes and prefers key env values", () => {
-    const selected = {
-      ITERABLE_USER_PII: "false",
-      ITERABLE_ENABLE_WRITES: "false",
-      ITERABLE_ENABLE_SENDS: "false",
-    } as Record<string, string>;
-    const keyEnv = {
-      ITERABLE_USER_PII: "true",
-      ITERABLE_ENABLE_WRITES: "true",
-      ITERABLE_ENABLE_SENDS: "true",
-    } as Record<string, string>;
-    const finalEnv = resolveFinalMcpEnv(selected, keyEnv);
-    expect(finalEnv.ITERABLE_USER_PII).toBe("true");
-    expect(finalEnv.ITERABLE_ENABLE_WRITES).toBe("true");
-    expect(finalEnv.ITERABLE_ENABLE_SENDS).toBe("true");
   });
 });
