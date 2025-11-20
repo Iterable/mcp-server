@@ -19,14 +19,6 @@ const { dirname, join } = path;
 const LOCAL_BINARY_NAME = "iterable-mcp";
 const NPX_PACKAGE_NAME = "@iterable/mcp";
 
-// Tool display names
-const TOOL_NAMES = {
-  cursor: "Cursor",
-  "claude-desktop": "Claude Desktop",
-  "claude-code": "Claude Code",
-  manual: "Manual Setup",
-} as const;
-
 // Get package version
 const packageJson = JSON.parse(
   readFileSync(
@@ -35,6 +27,17 @@ const packageJson = JSON.parse(
   )
 ) as { version: string };
 
+// Tool display names
+type ToolName = keyof typeof TOOL_NAMES;
+const TOOL_NAMES = {
+  cursor: "Cursor",
+  "claude-desktop": "Claude Desktop",
+  "claude-code": "Claude Code",
+  "gemini-cli": "Gemini CLI",
+  manual: "Manual Setup",
+} as const;
+
+type FileBasedToolName = keyof typeof TOOL_CONFIGS;
 const TOOL_CONFIGS = {
   "claude-desktop": (() => {
     switch (process.platform) {
@@ -61,7 +64,8 @@ const TOOL_CONFIGS = {
     }
   })(),
   cursor: path.join(os.homedir(), ".cursor", "mcp.json"),
-} as const;
+  "gemini-cli": path.join(os.homedir(), ".gemini", "settings.json"),
+} as const satisfies Record<string, string>;
 
 const execFileAsync = promisify(execFile);
 
@@ -221,10 +225,11 @@ export const setupMcpServer = async (): Promise<void> => {
   const showHelp = args.includes("--help") || args.includes("-h");
   const advanced = args.includes("--advanced");
   const autoUpdate = args.includes("--auto-update");
-  let tools = [
+  let tools: ToolName[] = [
     ...(args.includes("--claude-desktop") ? ["claude-desktop" as const] : []),
     ...(args.includes("--cursor") ? ["cursor" as const] : []),
     ...(args.includes("--claude-code") ? ["claude-code" as const] : []),
+    ...(args.includes("--gemini-cli") ? ["gemini-cli" as const] : []),
     ...(args.includes("--manual") ? ["manual" as const] : []),
   ];
 
@@ -254,6 +259,7 @@ export const setupMcpServer = async (): Promise<void> => {
       [`${commandName} setup --claude-desktop`, "Configure for Claude Desktop"],
       [`${commandName} setup --cursor`, "Configure for Cursor"],
       [`${commandName} setup --claude-code`, "Configure for Claude Code"],
+      [`${commandName} setup --gemini-cli`, "Configure for Gemini CLI"],
       [`${commandName} setup --manual`, "Show manual config instructions"],
       [
         `${commandName} setup --cursor --claude-desktop`,
@@ -359,9 +365,7 @@ export const setupMcpServer = async (): Promise<void> => {
     showIterableLogo(packageJson.version);
 
     const { selectedTools } = await inquirer.prompt<{
-      selectedTools: Array<
-        "cursor" | "claude-desktop" | "claude-code" | "manual"
-      >;
+      selectedTools: ToolName[];
     }>([
       {
         type: "checkbox",
@@ -371,6 +375,7 @@ export const setupMcpServer = async (): Promise<void> => {
           { name: "Cursor", value: "cursor" },
           { name: "Claude Desktop", value: "claude-desktop" },
           { name: "Claude Code (CLI)", value: "claude-code" },
+          { name: "Gemini CLI", value: "gemini-cli" },
           { name: "Other / Manual Setup", value: "manual" },
         ],
         validate: (arr: any) =>
@@ -898,8 +903,8 @@ export const setupMcpServer = async (): Promise<void> => {
     }
 
     const fileBasedTools = tools.filter(
-      (tool) => tool === "claude-desktop" || tool === "cursor"
-    ) as Array<"claude-desktop" | "cursor">;
+      (tool): tool is FileBasedToolName => tool in TOOL_CONFIGS
+    );
     const needsClaudeCode = tools.includes("claude-code");
     const needsManual = tools.includes("manual");
 
@@ -907,8 +912,7 @@ export const setupMcpServer = async (): Promise<void> => {
       const { updateToolConfig } = await import("./utils/tool-config.js");
       for (const tool of fileBasedTools) {
         const configPath = TOOL_CONFIGS[tool];
-        const toolName =
-          tool === "claude-desktop" ? "Claude Desktop" : "Cursor";
+        const toolName = TOOL_NAMES[tool];
         spinner.start(`Configuring ${toolName}...`);
         try {
           await updateToolConfig(configPath, iterableMcpConfig);
@@ -1004,6 +1008,8 @@ export const setupMcpServer = async (): Promise<void> => {
     if (fileBasedTools.includes("cursor")) configuredTools.push("Cursor");
     if (fileBasedTools.includes("claude-desktop"))
       configuredTools.push("Claude Desktop");
+    if (fileBasedTools.includes("gemini-cli"))
+      configuredTools.push("Gemini CLI");
     if (needsClaudeCode) configuredTools.push("Claude Code");
     if (needsManual) configuredTools.push("your AI tool");
 

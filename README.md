@@ -3,7 +3,7 @@
 ![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
 
 
-With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, and Claude Code!
+With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, and Gemini CLI!
 
 ## What is MCP?
 
@@ -58,7 +58,7 @@ Throughout this guide, commands are shown as `iterable-mcp` for brevity. If not 
 ```bash
 git clone https://github.com/iterable/mcp-server.git
 cd mcp-server
-pnpm install-dev:cursor  # or install-dev:claude-desktop or install-dev:claude-code
+pnpm install-dev:cursor  # or install-dev:claude-desktop, install-dev:claude-code, or install-dev:gemini-cli
 ```
 
 ### Claude Code
@@ -94,11 +94,14 @@ claude mcp add-from-claude-desktop
 
 For more information, see the [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp).
 
-### Manual configuration (Cursor & Claude Desktop)
+### Manual configuration (Cursor, Claude Desktop & Gemini CLI)
 
 The above commands will automatically configure your AI tool to use the MCP server by editing the appropriate configuration file, but you can also manually edit the appropriate configuration file:
 - **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Cursor:** `~/.cursor/mcp.json`
+- **Gemini CLI:** `~/.gemini/settings.json`
+
+All three use the same configuration format:
 
 **Recommended: Using key manager:**
 ```bash
