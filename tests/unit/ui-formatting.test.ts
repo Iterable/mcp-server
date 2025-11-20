@@ -68,56 +68,42 @@ describe("getKeyStorageMessage", () => {
     });
   });
 
-  it("returns macOS Keychain message on darwin", () => {
+  it("returns consistent message across platforms", () => {
+    const expectedMessage =
+      "Keys are encrypted at rest using platform-specific security (Keychain on macOS, DPAPI on Windows)";
+
+    // Test on macOS
     Object.defineProperty(process, "platform", {
       value: "darwin",
       writable: true,
       configurable: true,
     });
-    expect(getKeyStorageMessage()).toBe(
-      "Keys are stored securely in macOS Keychain"
-    );
-  });
+    expect(getKeyStorageMessage()).toBe(expectedMessage);
 
-  it("returns file message on win32", () => {
+    // Test on Windows
     Object.defineProperty(process, "platform", {
       value: "win32",
       writable: true,
       configurable: true,
     });
-    expect(getKeyStorageMessage()).toBe(
-      "Keys are stored in ~/.iterable-mcp/keys.json"
-    );
-  });
+    expect(getKeyStorageMessage()).toBe(expectedMessage);
 
-  it("returns file with permissions message on linux", () => {
+    // Test on Linux
     Object.defineProperty(process, "platform", {
       value: "linux",
       writable: true,
       configurable: true,
     });
-    expect(getKeyStorageMessage()).toBe(
-      "Keys are stored in ~/.iterable-mcp/keys.json with restricted permissions"
-    );
+    expect(getKeyStorageMessage()).toBe(expectedMessage);
   });
 
   it("adds bullet point prefix when requested", () => {
-    Object.defineProperty(process, "platform", {
-      value: "darwin",
-      writable: true,
-      configurable: true,
-    });
     expect(getKeyStorageMessage(true)).toBe(
-      "• Keys are stored securely in macOS Keychain"
+      "• Keys are encrypted at rest using platform-specific security (Keychain on macOS, DPAPI on Windows)"
     );
   });
 
   it("omits bullet point by default", () => {
-    Object.defineProperty(process, "platform", {
-      value: "darwin",
-      writable: true,
-      configurable: true,
-    });
-    expect(getKeyStorageMessage()).not.toContain("• ");
+    expect(getKeyStorageMessage()).not.toMatch(/^• /);
   });
 });

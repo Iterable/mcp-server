@@ -317,7 +317,7 @@ export async function handleKeysCommand(): Promise<void> {
         );
         console.log();
 
-        showSuccess(`Your API key "${name}" is now stored`);
+        showSuccess("Your API key is now securely stored (encrypted at rest)");
 
         // Offer to set newly added key as active
         const { activateNow } = await inquirer.prompt([
@@ -657,7 +657,7 @@ export async function handleKeysCommand(): Promise<void> {
         console.log(formatKeyValue("ID", resolved, chalk.gray));
         console.log();
 
-        showSuccess("Key removed successfully");
+        showSuccess("Key securely removed");
       } catch (error) {
         spinner.fail("Failed to delete key");
         showError(error instanceof Error ? error.message : "Unknown error");

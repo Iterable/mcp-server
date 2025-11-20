@@ -265,7 +265,8 @@ describe("MCP Server Setup Configuration", () => {
       });
 
       expect(config.command).toBe("node");
-      expect(config.args[0]).toContain("dist/index.js");
+      // Path uses platform-specific separators (/ on Unix, \ on Windows)
+      expect(config.args[0]).toMatch(/dist[\\/]index\.js/);
     });
 
     it("should use default 'npx' for remote mode", () => {
@@ -289,7 +290,8 @@ describe("MCP Server Setup Configuration", () => {
       });
 
       expect(config.command).toBe("/custom/path/to/node");
-      expect(config.args[0]).toContain("dist/index.js");
+      // Path uses platform-specific separators (/ on Unix, \ on Windows)
+      expect(config.args[0]).toMatch(/dist[\\/]index\.js/);
     });
 
     it("should use ITERABLE_MCP_NPX_PATH for remote mode", () => {
@@ -424,7 +426,8 @@ describe("MCP Server Setup Configuration", () => {
       });
 
       // Local builds use path to index.js, not package name
-      expect(config.args[0]).toContain("dist/index.js");
+      // Path uses platform-specific separators (/ on Unix, \ on Windows)
+      expect(config.args[0]).toMatch(/dist[\\/]index\.js/);
       expect(config.args[0]).not.toContain("@latest");
     });
   });

@@ -5,7 +5,7 @@
  *
  * Storage Strategy:
  * - macOS: API keys in Keychain, metadata in ~/.iterable-mcp/keys.json
- * - Windows: API keys and metadata in ~/.iterable-mcp/keys.json
+ * - Windows: API keys encrypted with DPAPI in ~/.iterable-mcp/keys.json
  * - Linux: API keys and metadata in ~/.iterable-mcp/keys.json (mode 0o600)
  * - Lock file: ~/.iterable-mcp/keys.lock prevents concurrent modifications
  *
@@ -52,6 +52,18 @@ async function execSecurityDefault(args: string[]): Promise<string> {
 // Type for the security executor function (for dependency injection in tests)
 export type SecurityExecutor = (args: string[]) => Promise<string>;
 
+/**
+ * Storage method for API keys
+ */
+enum StorageMethod {
+  /** macOS Keychain - keys stored and encrypted by OS keychain service */
+  KEYCHAIN = "keychain",
+  /** Windows DPAPI - keys encrypted by OS (user-scoped keys), stored in JSON file */
+  DPAPI = "dpapi",
+  /** File storage - plaintext keys in JSON file with restrictive permissions (Linux/other) */
+  FILE = "file",
+}
+
 export interface ApiKeyMetadata {
   /** Unique identifier for this key */
   id: string;
@@ -67,6 +79,8 @@ export interface ApiKeyMetadata {
   env?: Record<string, string>;
   /** API key value (only present when not using Keychain storage) */
   apiKey?: string;
+  /** Encrypted API key (Windows DPAPI) */
+  encryptedApiKey?: string;
 }
 
 interface KeyStore {
@@ -83,7 +97,7 @@ export class KeyManager {
   private store: KeyStore | null = null;
   private saveLock: Promise<void> | null = null;
   private readonly execSecurity: SecurityExecutor;
-  private readonly useKeychain: boolean;
+  private readonly storageMethod: StorageMethod;
 
   /**
    * Create a new KeyManager instance
@@ -96,11 +110,22 @@ export class KeyManager {
     this.metadataFile = path.join(this.configDir, "keys.json");
     this.lockFile = path.join(this.configDir, "keys.lock");
     this.execSecurity = execSecurity || execSecurityDefault;
-    // Use Keychain on macOS (or when mock execSecurity provided for tests)
+
+    // Determine storage method based on platform
     // Can be overridden via ITERABLE_MCP_FORCE_FILE_STORAGE=true
-    this.useKeychain =
-      (!!execSecurity || process.platform === "darwin") &&
-      process.env.ITERABLE_MCP_FORCE_FILE_STORAGE !== "true";
+    if (process.env.ITERABLE_MCP_FORCE_FILE_STORAGE === "true") {
+      // Force file storage mode (for testing or debugging)
+      this.storageMethod = StorageMethod.FILE;
+    } else if (execSecurity || process.platform === "darwin") {
+      // Use Keychain on macOS or when execSecurity is provided (for tests)
+      this.storageMethod = StorageMethod.KEYCHAIN;
+    } else if (process.platform === "win32") {
+      // Use DPAPI on Windows
+      this.storageMethod = StorageMethod.DPAPI;
+    } else {
+      // Use file storage on other platforms
+      this.storageMethod = StorageMethod.FILE;
+    }
   }
 
   /**
@@ -114,7 +139,11 @@ export class KeyManager {
    */
   private async validateAndCleanup(): Promise<string[]> {
     // Only validate Keychain on macOS
-    if (!this.useKeychain || !this.store || this.store.keys.length === 0) {
+    if (
+      this.storageMethod !== StorageMethod.KEYCHAIN ||
+      !this.store ||
+      this.store.keys.length === 0
+    ) {
       return [];
     }
 
@@ -459,6 +488,96 @@ export class KeyManager {
   }
 
   /**
+   * Encrypt data using Windows DPAPI
+   *
+   * Security: Uses native C++ bindings to Windows DPAPI (Data Protection API).
+   * - No shell execution or code evaluation
+   * - Encrypted data can only be decrypted by the same user on the same machine
+   * - Uses CurrentUser scope for user-level protection
+   * - No optional entropy parameter (null) for simplicity
+   *
+   * @param text - Plain text to encrypt (validated as 32-char hex by caller)
+   * @returns Base64-encoded encrypted blob
+   * @throws {Error} If DPAPI encryption fails or platform is not Windows
+   */
+  private async encryptWindows(text: string): Promise<string> {
+    if (process.platform !== "win32") {
+      throw new Error("DPAPI encryption is only supported on Windows");
+    }
+
+    try {
+      // Dynamic import to avoid loading native module on non-Windows platforms
+      const { Dpapi } = await import("@primno/dpapi");
+
+      // Convert string to buffer (UTF-8 encoding)
+      const plainBuffer = Buffer.from(text, "utf-8");
+
+      // Encrypt using DPAPI (returns Uint8Array)
+      // Parameters: data, optionalEntropy (null), scope ("CurrentUser")
+      const encryptedBytes = Dpapi.protectData(
+        plainBuffer,
+        null,
+        "CurrentUser"
+      );
+
+      // Convert to Buffer and encode as base64 for JSON storage
+      return Buffer.from(encryptedBytes).toString("base64");
+    } catch (error) {
+      logger.error("DPAPI encryption failed", { error });
+      throw new Error(
+        `Failed to encrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Decrypt data using Windows DPAPI
+   *
+   * Security: Uses native C++ bindings to Windows DPAPI.
+   * - No shell execution or code evaluation
+   * - Only the user who encrypted the data can decrypt it
+   * - Validates base64 input before decryption
+   *
+   * @param encryptedBase64 - Base64-encoded encrypted blob
+   * @returns Decrypted plain text
+   * @throws {Error} If DPAPI decryption fails, data is corrupt, or platform is not Windows
+   */
+  private async decryptWindows(encryptedBase64: string): Promise<string> {
+    if (process.platform !== "win32") {
+      throw new Error("DPAPI decryption is only supported on Windows");
+    }
+
+    // Validate base64 format to prevent invalid data from reaching DPAPI
+    if (!/^[A-Za-z0-9+/]+=*$/.test(encryptedBase64)) {
+      throw new Error("Invalid encrypted data format (not valid base64)");
+    }
+
+    try {
+      // Dynamic import to avoid loading native module on non-Windows platforms
+      const { Dpapi } = await import("@primno/dpapi");
+
+      // Decode base64 to buffer
+      const encryptedBuffer = Buffer.from(encryptedBase64, "base64");
+
+      // Decrypt using DPAPI (returns Uint8Array)
+      // Parameters: encryptedData, optionalEntropy (null), scope ("CurrentUser")
+      const decryptedBytes = Dpapi.unprotectData(
+        encryptedBuffer,
+        null,
+        "CurrentUser"
+      );
+
+      // Convert to Buffer and decode as UTF-8
+      return Buffer.from(decryptedBytes).toString("utf-8");
+    } catch (error) {
+      logger.error("DPAPI decryption failed", { error });
+      throw new Error(
+        `Failed to decrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
    * Add a new API key
    *
    * Stores an API key securely (Keychain on macOS, file on other platforms).
@@ -515,28 +634,42 @@ export class KeyManager {
     };
 
     // Store API key
-    if (this.useKeychain) {
-      // macOS: Store in Keychain
-      try {
-        await this.execSecurity([
-          "add-generic-password",
-          "-a",
-          id,
-          "-s",
-          SERVICE_NAME,
-          "-w",
-          apiKey,
-          "-U",
-        ]);
-      } catch (error) {
-        logger.error("Failed to store key in keychain", { error, id });
-        throw new Error(
-          `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    } else {
-      // Windows/Linux: Store in JSON
-      metadata.apiKey = apiKey;
+    switch (this.storageMethod) {
+      case StorageMethod.KEYCHAIN:
+        try {
+          await this.execSecurity([
+            "add-generic-password",
+            "-a",
+            id,
+            "-s",
+            SERVICE_NAME,
+            "-w",
+            apiKey,
+            "-U",
+          ]);
+        } catch (error) {
+          logger.error("Failed to store key in keychain", { error, id });
+          throw new Error(
+            `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+        break;
+
+      case StorageMethod.DPAPI:
+        try {
+          metadata.encryptedApiKey = await this.encryptWindows(apiKey);
+        } catch (error) {
+          logger.error("Failed to encrypt key with DPAPI", { error, id });
+          throw new Error(
+            `Failed to encrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+        break;
+
+      default:
+        // Linux/Other: Store in JSON
+        metadata.apiKey = apiKey;
+        break;
     }
 
     // Store metadata
@@ -618,42 +751,66 @@ export class KeyManager {
     }
 
     // Get API key
-    if (this.useKeychain) {
-      // macOS: Get from Keychain
-      try {
-        const apiKey = await this.execSecurity([
-          "find-generic-password",
-          "-a",
-          keyMeta.id,
-          "-s",
-          SERVICE_NAME,
-          "-w",
-        ]);
+    switch (this.storageMethod) {
+      case StorageMethod.KEYCHAIN:
+        // macOS: Get from Keychain
+        try {
+          const apiKey = await this.execSecurity([
+            "find-generic-password",
+            "-a",
+            keyMeta.id,
+            "-s",
+            SERVICE_NAME,
+            "-w",
+          ]);
 
-        if (!apiKey) {
-          logger.error("Key not found in keychain", { id: keyMeta.id });
+          if (!apiKey) {
+            logger.error("Key not found in keychain", { id: keyMeta.id });
+            throw new Error(
+              `Key not found in macOS Keychain for ID ${keyMeta.id}`
+            );
+          }
+
+          return apiKey;
+        } catch (error) {
+          logger.error("Failed to retrieve key from keychain", {
+            error,
+            id: keyMeta.id,
+          });
           throw new Error(
-            `Key not found in macOS Keychain for ID ${keyMeta.id}`
+            `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
           );
         }
 
-        return apiKey;
-      } catch (error) {
-        logger.error("Failed to retrieve key from keychain", {
-          error,
-          id: keyMeta.id,
-        });
-        throw new Error(
-          `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    } else {
-      // Windows/Linux: Get from JSON
-      if (!keyMeta.apiKey) {
-        logger.error("Key not found in metadata", { id: keyMeta.id });
-        throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
-      }
-      return keyMeta.apiKey;
+      case StorageMethod.DPAPI:
+        // Windows: Decrypt from JSON
+        if (keyMeta.encryptedApiKey) {
+          try {
+            return await this.decryptWindows(keyMeta.encryptedApiKey);
+          } catch (error) {
+            logger.error("Failed to decrypt key with DPAPI", {
+              error,
+              id: keyMeta.id,
+            });
+            throw new Error(
+              `Failed to decrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        } else if (keyMeta.apiKey) {
+          // Fallback for legacy keys stored in plaintext on Windows
+          return keyMeta.apiKey;
+        } else {
+          logger.error("Key not found in metadata", { id: keyMeta.id });
+          throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
+        }
+
+      default:
+        // Linux/Other: Get from JSON
+        if (!keyMeta.apiKey) {
+          logger.error("Key not found in metadata", { id: keyMeta.id });
+          throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
+        }
+        return keyMeta.apiKey;
     }
   }
 
@@ -781,7 +938,7 @@ export class KeyManager {
     }
 
     // Delete from storage
-    if (this.useKeychain) {
+    if (this.storageMethod === StorageMethod.KEYCHAIN) {
       // macOS: Delete from Keychain
       let keychainDeleted = false;
       try {
@@ -874,22 +1031,34 @@ export class KeyManager {
       try {
         let storedKey: string;
 
-        if (this.useKeychain) {
-          // macOS: Check Keychain
-          storedKey = await this.execSecurity([
-            "find-generic-password",
-            "-a",
-            keyMeta.id,
-            "-s",
-            SERVICE_NAME,
-            "-w",
-          ]);
-        } else {
-          // Windows/Linux: Check JSON
-          if (!keyMeta.apiKey) {
-            continue;
-          }
-          storedKey = keyMeta.apiKey;
+        switch (this.storageMethod) {
+          case StorageMethod.KEYCHAIN:
+            storedKey = await this.execSecurity([
+              "find-generic-password",
+              "-a",
+              keyMeta.id,
+              "-s",
+              SERVICE_NAME,
+              "-w",
+            ]);
+            break;
+
+          case StorageMethod.DPAPI:
+            if (keyMeta.encryptedApiKey) {
+              storedKey = await this.decryptWindows(keyMeta.encryptedApiKey);
+            } else if (keyMeta.apiKey) {
+              storedKey = keyMeta.apiKey;
+            } else {
+              continue;
+            }
+            break;
+
+          default:
+            if (!keyMeta.apiKey) {
+              continue;
+            }
+            storedKey = keyMeta.apiKey;
+            break;
         }
 
         if (storedKey.trim() === apiKeyValue) {
