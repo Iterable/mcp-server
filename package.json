@@ -56,6 +56,8 @@
     "install-dev:claude-code:debug": "pnpm install-dev && node dist/index.js setup --claude-code --debug --local",
     "install-dev:cursor": "pnpm install-dev && node dist/index.js setup --cursor --local",
     "install-dev:cursor:debug": "pnpm install-dev && node dist/index.js setup --cursor --debug --local",
+    "install-dev:gemini-cli": "pnpm install-dev && node dist/index.js setup --gemini-cli --local",
+    "install-dev:gemini-cli:debug": "pnpm install-dev && node dist/index.js setup --gemini-cli --debug --local",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix --quiet",
     "prepublishOnly": "pnpm build",
     "prestart": "pnpm build",
