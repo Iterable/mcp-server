@@ -12,8 +12,6 @@ describe("setup skips API key prompt when existing key selected", () => {
 
     // Mock inquirer to provide a deterministic series of answers
     const answers = [
-      // When no flags: select tools
-      { selectedTools: ["cursor"] },
       // If ITERABLE_API_KEY env var is set, decline to use it (so we test existing key flow)
       ...(process.env.ITERABLE_API_KEY ? [{ useEnvKey: false }] : []),
       // macOS: ask to use existing
@@ -22,10 +20,10 @@ describe("setup skips API key prompt when existing key selected", () => {
       { chosenId: "id-1" },
       // offer to activate selected existing key
       { activateExisting: false },
+      // When no flags: select tools (now happens after API key setup)
+      { selectedTools: ["cursor"] },
       // auto-update prompt
       { enableAutoUpdate: false },
-      // summary proceed confirm
-      { proceed: false },
     ];
 
     const promptMock = jest.fn(async (..._args: any[]) => answers.shift());
@@ -56,7 +54,7 @@ describe("setup skips API key prompt when existing key selected", () => {
         getKey: jest.fn(async () => "a1b2c3d4e5f6789012345678901234ab"),
         getActiveKeyMetadata: jest.fn(async () => testKey),
         setActiveKey: jest.fn(async () => {}),
-        updateKeyEnv: jest.fn(async () => {}),
+        updateKey: jest.fn(async () => testKey.id),
         findKeyByValue: jest.fn(async () => null),
       }),
     }));

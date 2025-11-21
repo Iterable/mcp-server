@@ -36,7 +36,7 @@ interface TemplateTypeConfig {
   proofMethodName: keyof IterableClient;
   previewMethodName?: keyof IterableClient; // Only email and inapp support preview
   // Special handling for parameter differences
-  getParamsTransform?: (params: any) => any;
+  getParamsTransform?: (params: z.infer<typeof GetTemplateParamsSchema>) => any;
 }
 
 const TEMPLATE_TYPES: TemplateTypeConfig[] = [

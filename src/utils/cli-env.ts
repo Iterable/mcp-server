@@ -36,13 +36,14 @@ export async function loadUi(): Promise<any> {
     return {
       createTable: () => ({ push: () => {}, toString: () => "" }),
       formatKeyValue: (_k: string, v: string, _c?: any) => v,
-      icons: { key: "", globe: "", zap: "" },
+      icons: { key: "", globe: "", zap: "", lock: "", bulb: "", fire: "" },
       showBox: () => {},
       showError: () => {},
       showInfo: () => {},
       showIterableLogo: () => {},
       showSection: () => {},
       showSuccess: () => {},
+      linkColor: () => (s: string) => s,
     };
   }
   return await import("./ui.js");
