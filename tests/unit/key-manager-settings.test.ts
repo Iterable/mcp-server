@@ -13,23 +13,27 @@ function makeTempDir(): string {
 const mockExec = async () => "ok";
 
 describe("KeyManager per-key env settings", () => {
-  it("stores env overrides on addKey and updates with updateKeyEnv", async () => {
+  it("stores env overrides on addKey and updates with updateKey", async () => {
     const km = new KeyManager(makeTempDir(), mockExec);
     await km.initialize();
 
-    const id = await km.addKey(
-      "prod",
-      "abcdefabcdefabcdefabcdefabcdefab",
-      "https://api.iterable.com",
-      { ITERABLE_USER_PII: "false", ITERABLE_ENABLE_WRITES: "false" }
-    );
+    const apiKey = "abcdefabcdefabcdefabcdefabcdefab";
+    const id = await km.addKey("prod", apiKey, "https://api.iterable.com", {
+      ITERABLE_USER_PII: "false",
+      ITERABLE_ENABLE_WRITES: "false",
+    });
 
     let list = await km.listKeys();
     const meta = list.find((k) => k.id === id)!;
     expect(meta.env?.ITERABLE_USER_PII).toBe("false");
     expect(meta.env?.ITERABLE_ENABLE_WRITES).toBe("false");
 
-    await km.updateKeyEnv(id, { ITERABLE_ENABLE_WRITES: "true" });
+    // Update using updateKey with merged env
+    await km.updateKey(id, meta.name, apiKey, meta.baseUrl, {
+      ...meta.env,
+      ITERABLE_ENABLE_WRITES: "true",
+    });
+
     list = await km.listKeys();
     const updated = list.find((k) => k.id === id)!;
     expect(updated.env?.ITERABLE_USER_PII).toBe("false");
