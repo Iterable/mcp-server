@@ -71,7 +71,7 @@
   },
   "dependencies": {
     "@alcyone-labs/zod-to-json-schema": "4.0.10",
-    "@iterable/api": "0.3.0",
+    "@iterable/api": "0.4.0",
     "@modelcontextprotocol/sdk": "1.18.1",
     "@primno/dpapi": "^2.0.1",
     "@types/json-schema": "7.0.15",

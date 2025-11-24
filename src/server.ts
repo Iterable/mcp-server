@@ -208,7 +208,7 @@ export class IterableMcpServer {
     // Initialize Iterable client with API key and base URL from config
     this.iterableClient = new IterableClient({
       apiKey: mcpConfig.apiKey,
-      baseURL: mcpConfig.baseUrl || "https://api.iterable.com",
+      baseUrl: mcpConfig.baseUrl,
     });
     this.setupHttpInterceptors();
 

@@ -14,10 +14,10 @@ export interface McpServerConfig {
   readonly allowWrites: boolean;
   /** If false, exclude tools that can send messages (campaign/journey/event-triggered sends) */
   readonly allowSends: boolean;
-  /** The active Iterable API key (optional for tests) */
-  readonly apiKey?: string;
-  /** The Iterable API base URL (defaults to https://api.iterable.com) */
-  readonly baseUrl?: string;
+  /** The active Iterable API key */
+  readonly apiKey: string;
+  /** The Iterable API base URL */
+  readonly baseUrl: string;
 }
 
 export function resolveAllowFlags(

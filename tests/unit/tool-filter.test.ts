@@ -12,6 +12,7 @@ import {
   READ_ONLY_TOOLS,
 } from "../../src/tool-filter.js";
 import { createAllTools } from "../../src/tools/index.js";
+import { createTestConfig } from "../utils/test-config.js";
 
 // Mock Iterable client for testing
 const mockClient = {} as any;
@@ -23,11 +24,11 @@ describe("Tool Filter", () => {
   describe("Safe tool lists validation", () => {
     it("should have all NON_PII_TOOLS in actual tool names", () => {
       // Get the safe non-PII tools by testing with restrictive config
-      const restrictiveConfig: McpServerConfig = {
+      const restrictiveConfig: McpServerConfig = createTestConfig({
         allowUserPii: false,
         allowWrites: true, // Allow writes to isolate PII filtering
         allowSends: true,
-      };
+      });
 
       const nonPiiTools = filterTools(allTools, restrictiveConfig);
       const nonPiiToolNames = nonPiiTools.map((tool) => tool.name);
@@ -40,11 +41,11 @@ describe("Tool Filter", () => {
 
     it("should have all READ_ONLY_TOOLS in actual tool names", () => {
       // Get the read-only tools by testing with restrictive config
-      const restrictiveConfig: McpServerConfig = {
+      const restrictiveConfig: McpServerConfig = createTestConfig({
         allowUserPii: true, // Allow PII to isolate write filtering
         allowWrites: false,
         allowSends: true,
-      };
+      });
 
       const readOnlyTools = filterTools(allTools, restrictiveConfig);
       const readOnlyToolNames = readOnlyTools.map((tool) => tool.name);
@@ -70,23 +71,23 @@ describe("Tool Filter", () => {
     });
 
     it("should filter tools when restrictions are applied", () => {
-      const permissiveConfig: McpServerConfig = {
+      const permissiveConfig: McpServerConfig = createTestConfig({
         allowUserPii: true,
         allowWrites: true,
         allowSends: true,
-      };
+      });
 
-      const restrictivePiiConfig: McpServerConfig = {
+      const restrictivePiiConfig: McpServerConfig = createTestConfig({
         allowUserPii: false,
         allowWrites: true,
         allowSends: true,
-      };
+      });
 
-      const restrictiveWriteConfig: McpServerConfig = {
+      const restrictiveWriteConfig: McpServerConfig = createTestConfig({
         allowUserPii: true,
         allowWrites: false,
         allowSends: true,
-      };
+      });
 
       const allToolsCount = filterTools(allTools, permissiveConfig).length;
       const nonPiiToolsCount = filterTools(
@@ -107,11 +108,11 @@ describe("Tool Filter", () => {
 
   describe("Configuration filtering", () => {
     it("should filter PII tools when allowUserPii is false", () => {
-      const config: McpServerConfig = {
+      const config: McpServerConfig = createTestConfig({
         allowUserPii: false,
         allowWrites: true,
         allowSends: true,
-      };
+      });
 
       const filteredTools = filterTools(allTools, config);
       const filteredNames = filteredTools.map((tool) => tool.name);
@@ -134,11 +135,11 @@ describe("Tool Filter", () => {
     });
 
     it("should filter write tools when allowWrites is false", () => {
-      const config: McpServerConfig = {
+      const config: McpServerConfig = createTestConfig({
         allowUserPii: true,
         allowWrites: false,
         allowSends: true,
-      };
+      });
 
       const filteredTools = filterTools(allTools, config);
       const filteredNames = filteredTools.map((tool) => tool.name);
@@ -163,22 +164,22 @@ describe("Tool Filter", () => {
     });
 
     it("should allow all tools when both restrictions are disabled", () => {
-      const config: McpServerConfig = {
+      const config: McpServerConfig = createTestConfig({
         allowUserPii: true,
         allowWrites: true,
         allowSends: true,
-      };
+      });
 
       const filteredTools = filterTools(allTools, config);
       expect(filteredTools).toHaveLength(allTools.length);
     });
 
     it("should apply both restrictions when both are enabled", () => {
-      const config: McpServerConfig = {
+      const config: McpServerConfig = createTestConfig({
         allowUserPii: false,
         allowWrites: false,
         allowSends: false,
-      };
+      });
 
       const filteredTools = filterTools(allTools, config);
 
