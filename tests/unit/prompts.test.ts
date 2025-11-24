@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { generatePromptMessage, generatePrompts } from "../../src/prompts.js";
 import { filterTools } from "../../src/tool-filter.js";
 import { createAllTools } from "../../src/tools/index.js";
+import { createTestConfig } from "../utils/test-config.js";
 
 describe("MCP Prompts", () => {
   let client: IterableClient;
@@ -115,11 +116,11 @@ describe("MCP Prompts", () => {
     it("should work with filtered read-only tools", () => {
       // Test the pattern used in the server: filter to read-only tools first
       const allTools = createAllTools(client);
-      const readOnlyConfig = {
+      const readOnlyConfig = createTestConfig({
         allowUserPii: true,
         allowWrites: false,
         allowSends: false,
-      };
+      });
       const readOnlyTools = filterTools(allTools, readOnlyConfig);
       const prompts = generatePrompts(readOnlyTools);
 

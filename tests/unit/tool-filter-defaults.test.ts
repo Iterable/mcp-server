@@ -1,4 +1,5 @@
-import { filterTools } from "../../src/tool-filter";
+import { filterTools } from "../../src/tool-filter.js";
+import { createTestConfig } from "../utils/test-config.js";
 
 describe("filterTools defaults", () => {
   const readOnlyTool: any = {
@@ -16,21 +17,27 @@ describe("filterTools defaults", () => {
   } as any;
 
   it("excludes write tools when allowWrites=false", () => {
-    const out = filterTools([readOnlyTool, writeTool], {
-      allowUserPii: false,
-      allowWrites: false,
-      allowSends: true,
-    });
+    const out = filterTools(
+      [readOnlyTool, writeTool],
+      createTestConfig({
+        allowUserPii: false,
+        allowWrites: false,
+        allowSends: true,
+      })
+    );
     expect(out.map((t) => t.name)).toContain("get_campaigns");
     expect(out.map((t) => t.name)).not.toContain("create_campaign");
   });
 
   it("includes write tools when allowWrites=true", () => {
-    const out = filterTools([readOnlyTool, writeTool], {
-      allowUserPii: false,
-      allowWrites: true,
-      allowSends: true,
-    });
+    const out = filterTools(
+      [readOnlyTool, writeTool],
+      createTestConfig({
+        allowUserPii: false,
+        allowWrites: true,
+        allowSends: true,
+      })
+    );
     expect(out.map((t) => t.name)).toContain("create_campaign");
   });
 });
