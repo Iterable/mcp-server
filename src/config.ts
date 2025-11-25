@@ -1,6 +1,7 @@
 import { logger } from "@iterable/api";
 
 import { getKeyManager } from "./key-manager.js";
+import { COMMAND_NAME } from "./utils/command-info.js";
 import { sanitizeString } from "./utils/sanitize.js";
 
 /**
@@ -117,7 +118,7 @@ export async function loadMcpServerConfig(): Promise<McpServerConfig> {
 
   if (!apiKey) {
     throw new Error(
-      "No API key found. Please run 'iterable-mcp setup' or set ITERABLE_API_KEY environment variable."
+      `No API key found. Please run '${COMMAND_NAME} setup' or set ITERABLE_API_KEY environment variable.`
     );
   }
 

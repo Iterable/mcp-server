@@ -25,6 +25,7 @@ import os from "os";
 import path from "path";
 import { promisify } from "util";
 
+import { COMMAND_NAME } from "./utils/command-info.js";
 import { isHttpsOrLocalhost, isLocalhostHost } from "./utils/url.js";
 
 // Service name for keychain entries
@@ -73,6 +74,8 @@ export interface ApiKeyMetadata {
   baseUrl: string;
   /** ISO timestamp when key was created */
   created: string;
+  /** ISO timestamp when key was last updated */
+  updated?: string;
   /** Whether this is the currently active key */
   isActive: boolean;
   /** Optional per-key environment overrides (extensible for future vars) */
@@ -188,14 +191,14 @@ export class KeyManager {
       for (const { id, name } of summary) {
         console.warn(`  • ${name}  (ID: ${id})`);
         console.warn(
-          `    Delete from metadata:   iterable-mcp keys delete "${id}"`
+          `    Delete from metadata:   ${COMMAND_NAME} keys delete "${id}"`
         );
         console.warn(
           `    macOS manual cleanup: security delete-generic-password -a "${id}" -s "${SERVICE_NAME}"`
         );
       }
       console.warn("\nNext steps:");
-      console.warn("  1) List keys:    iterable-mcp keys list");
+      console.warn(`  1) List keys:    ${COMMAND_NAME} keys list`);
       console.warn("  2) Delete any orphaned keys using the ID shown above");
       console.warn("  3) Re-run your command after cleanup\n");
 
@@ -578,21 +581,24 @@ export class KeyManager {
   }
 
   /**
-   * Add a new API key
+   * Save (add or update) an API key
    *
-   * Stores an API key securely (Keychain on macOS, file on other platforms).
+   * Private implementation that handles both add and update operations.
+   * If idOrName is provided, updates an existing key. Otherwise, adds a new key.
    *
-   * @param name - User-friendly name for the key (must be unique)
-   * @param apiKey - 32-character lowercase hexadecimal Iterable API key
-   * @param baseUrl - Iterable API base URL (must be HTTPS)
-   * @returns The unique ID generated for this key
-   * @throws {Error} If the key name already exists, validation fails, or storage fails
+   * @param name - User-friendly name for the key
+   * @param apiKey - The Iterable API key value
+   * @param baseUrl - Iterable API base URL
+   * @param envOverrides - Environment variable overrides. If undefined, keeps existing env (update) or no env (add). If provided (even empty {}), replaces/clears env.
+   * @param idOrName - If provided, updates the existing key with this ID or name
+   * @returns The ID of the saved key
    */
-  async addKey(
+  private async saveKey(
     name: string,
     apiKey: string,
     baseUrl: string,
-    envOverrides?: Record<string, string>
+    envOverrides?: Record<string, string>,
+    idOrName?: string
   ): Promise<string> {
     if (!this.store) {
       await this.initialize();
@@ -610,37 +616,55 @@ export class KeyManager {
     this.validateApiKey(apiKey);
     this.validateBaseUrl(baseUrl);
 
-    // Check for duplicate names
-    if (this.store.keys.some((k) => k.name === name)) {
-      throw new Error(`Key with name "${name}" already exists`);
+    const isUpdate = !!idOrName;
+    let existingIndex = -1;
+    let existingKey: ApiKeyMetadata | undefined;
+
+    if (isUpdate) {
+      // UPDATE mode: Find existing key
+      existingIndex = this.store.keys.findIndex(
+        (k) => k.id === idOrName || k.name === idOrName
+      );
+
+      if (existingIndex === -1) {
+        throw new Error(`Key not found: ${idOrName}`);
+      }
+
+      existingKey = this.store.keys[existingIndex]!;
     }
 
-    // Generate unique ID
-    const id = this.generateId();
+    // Check for duplicate names
+    if (existingKey?.name !== name) {
+      if (this.store.keys.some((k) => k.name === name)) {
+        throw new Error(`Key with name "${name}" already exists`);
+      }
+    }
 
-    // If this is the first key, make it active
-    const isActive = this.store.keys.length === 0;
+    const metadata: ApiKeyMetadata = isUpdate
+      ? {
+          ...existingKey!,
+          name,
+          baseUrl,
+          updated: new Date().toISOString(),
+          ...(envOverrides !== undefined ? { env: envOverrides } : {}),
+        }
+      : {
+          id: this.generateId(),
+          name,
+          baseUrl,
+          created: new Date().toISOString(),
+          isActive: this.store.keys.length === 0,
+          ...(envOverrides !== undefined ? { env: envOverrides } : {}),
+        };
 
-    // Create metadata
-    const metadata: ApiKeyMetadata = {
-      id,
-      name,
-      baseUrl,
-      created: new Date().toISOString(),
-      isActive,
-      ...(envOverrides && Object.keys(envOverrides).length > 0
-        ? { env: envOverrides }
-        : {}),
-    };
-
-    // Store API key
+    // Store API key in secure storage
     switch (this.storageMethod) {
       case StorageMethod.KEYCHAIN:
         try {
           await this.execSecurity([
             "add-generic-password",
             "-a",
-            id,
+            metadata.id,
             "-s",
             SERVICE_NAME,
             "-w",
@@ -648,7 +672,10 @@ export class KeyManager {
             "-U",
           ]);
         } catch (error) {
-          logger.error("Failed to store key in keychain", { error, id });
+          logger.error("Failed to store key in keychain", {
+            error,
+            id: metadata.id,
+          });
           throw new Error(
             `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
           );
@@ -659,7 +686,10 @@ export class KeyManager {
         try {
           metadata.encryptedApiKey = await this.encryptWindows(apiKey);
         } catch (error) {
-          logger.error("Failed to encrypt key with DPAPI", { error, id });
+          logger.error("Failed to encrypt key with DPAPI", {
+            error,
+            id: metadata.id,
+          });
           throw new Error(
             `Failed to encrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
           );
@@ -672,34 +702,65 @@ export class KeyManager {
         break;
     }
 
-    // Store metadata
-    this.store.keys.push(metadata);
+    // Store or update metadata
+    if (isUpdate) {
+      this.store.keys[existingIndex] = metadata;
+    } else {
+      this.store.keys.push(metadata);
+    }
+
     await this.saveMetadata();
 
-    return id;
+    logger.debug(isUpdate ? "API key updated" : "API key added", {
+      id: metadata.id,
+      name: metadata.name,
+    });
+
+    return metadata.id;
   }
 
   /**
-   * Update per-key environment overrides for an existing key
+   * Add a new API key
+   *
+   * Stores an API key securely (Keychain on macOS, encrypted on Windows, file on Linux).
+   *
+   * @param name - User-friendly name for the key (must be unique)
+   * @param apiKey - 32-character lowercase hexadecimal Iterable API key
+   * @param baseUrl - Iterable API base URL (must be HTTPS)
+   * @param envOverrides - Optional environment variable overrides for this key
+   * @returns The unique ID generated for this key
+   * @throws {Error} If the key name already exists, validation fails, or storage fails
    */
-  async updateKeyEnv(
+  async addKey(
+    name: string,
+    apiKey: string,
+    baseUrl: string,
+    envOverrides?: Record<string, string>
+  ): Promise<string> {
+    return this.saveKey(name, apiKey, baseUrl, envOverrides);
+  }
+
+  /**
+   * Update an existing API key
+   *
+   * Updates all properties of an existing key including name, API key value, base URL, and environment overrides.
+   *
+   * @param idOrName - The unique ID or name of the key to update
+   * @param name - New name for the key (must be unique unless unchanged)
+   * @param apiKey - New API key value (can be the same as existing)
+   * @param baseUrl - New Iterable API base URL
+   * @param envOverrides - New environment variable overrides (undefined = keep existing, {} = clear)
+   * @returns The ID of the updated key
+   * @throws {Error} If the key is not found, name conflict, validation fails, or storage fails
+   */
+  async updateKey(
     idOrName: string,
-    envOverrides: Record<string, string>
-  ): Promise<void> {
-    if (!this.store) {
-      await this.initialize();
-    }
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-    const keyMeta = this.store.keys.find(
-      (k) => k.id === idOrName || k.name === idOrName
-    );
-    if (!keyMeta) {
-      throw new Error(`Key not found: ${idOrName}`);
-    }
-    keyMeta.env = { ...(keyMeta.env || {}), ...envOverrides };
-    await this.saveMetadata();
+    name: string,
+    apiKey: string,
+    baseUrl: string,
+    envOverrides?: Record<string, string>
+  ): Promise<string> {
+    return this.saveKey(name, apiKey, baseUrl, envOverrides, idOrName);
   }
 
   /**
@@ -721,6 +782,17 @@ export class KeyManager {
     }
 
     return [...this.store.keys];
+  }
+
+  /**
+   * Get key metadata by ID
+   *
+   * @param idOrName - The unique ID or user-friendly name of the key
+   * @returns The key metadata, or null if not found
+   */
+  async getKeyMetadata(idOrName: string): Promise<ApiKeyMetadata | null> {
+    const keys = await this.listKeys();
+    return keys.find((k) => k.id === idOrName || k.name === idOrName) ?? null;
   }
 
   /**
@@ -977,13 +1049,13 @@ export class KeyManager {
           `    To manually remove: security delete-generic-password -a "${keyMeta.id}" -s "${SERVICE_NAME}"`
         );
       } else {
-        logger.info("API key deleted", { id: keyMeta.id, name: keyMeta.name });
+        logger.debug("API key deleted", { id: keyMeta.id, name: keyMeta.name });
       }
     } else {
       // Windows/Linux: Just remove from JSON
       this.store.keys.splice(index, 1);
       await this.saveMetadata();
-      logger.info("API key deleted", { id: keyMeta.id, name: keyMeta.name });
+      logger.debug("API key deleted", { id: keyMeta.id, name: keyMeta.name });
     }
   }
 
@@ -1102,12 +1174,12 @@ export class KeyManager {
 
     const existing = this.store.keys.find((k) => k.name === name);
     if (existing) {
-      logger.info("Legacy key already migrated", { name });
+      logger.debug("Legacy key already migrated", { name });
       return existing.id;
     }
 
     // Add the legacy key
-    logger.info("Migrating legacy API key", { name });
+    logger.debug("Migrating legacy API key", { name });
     return this.addKey(name, apiKey, baseUrl);
   }
 }
