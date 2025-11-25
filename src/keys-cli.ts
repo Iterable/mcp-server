@@ -346,6 +346,7 @@ export async function saveKeyInteractive(
   if (isUpdate && existingKey!.baseUrl !== baseUrl) {
     console.log();
     showInfo(`Endpoint changing from ${existingKey!.baseUrl} to ${baseUrl}`);
+    console.log();
   }
 
   // Step 4: Prompt for name
