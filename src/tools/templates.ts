@@ -9,7 +9,7 @@ import {
   GetTemplateParamsSchema,
   GetTemplatesParamsSchema,
   PreviewTemplateParamsSchema,
-  TemplateProofRequestSchema,
+  SendTemplateProofParamsSchema,
   UpdateEmailTemplateParamsSchema,
   UpdateInAppTemplateParamsSchema,
   UpdatePushTemplateParamsSchema,
@@ -116,7 +116,7 @@ function createTemplateToolsForType(
     createTool({
       name: `send_${config.type}_template_proof`,
       description: `Send a proof of a ${config.displayName} template to a specific user`,
-      schema: TemplateProofRequestSchema,
+      schema: SendTemplateProofParamsSchema,
       execute: (params) => (client as any)[config.proofMethodName](params),
     }),
   ];

@@ -4,10 +4,10 @@
 
 import type { IterableClient } from "@iterable/api";
 import {
-  CreateSnippetRequestSchema,
+  CreateSnippetParamsSchema,
   DeleteSnippetParamsSchema,
   GetSnippetParamsSchema,
-  UpdateSnippetRequestSchema,
+  UpdateSnippetParamsSchema,
 } from "@iterable/api";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -26,7 +26,7 @@ export function createSnippetTools(client: IterableClient): Tool[] {
     createTool({
       name: "create_snippet",
       description: "Create a new snippet with Handlebars templating support",
-      schema: CreateSnippetRequestSchema,
+      schema: CreateSnippetParamsSchema,
       execute: (params) => client.createSnippet(params),
     }),
 
@@ -40,14 +40,8 @@ export function createSnippetTools(client: IterableClient): Tool[] {
     createTool({
       name: "update_snippet",
       description: "Update a snippet by ID (numeric) or name (string)",
-      schema: z.object({
-        identifier: z
-          .union([z.string(), z.number()])
-          .describe("Snippet ID (numeric) or name (string)"),
-        body: UpdateSnippetRequestSchema.describe("Snippet update data"),
-      }),
-      execute: (params) =>
-        client.updateSnippet({ identifier: params.identifier }, params.body),
+      schema: UpdateSnippetParamsSchema,
+      execute: (params) => client.updateSnippet(params),
     }),
 
     createTool({
