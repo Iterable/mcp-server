@@ -385,6 +385,8 @@ export const setupMcpServer = async (): Promise<void> => {
         ]);
         if (useExisting) {
           const { formatKeychainChoiceLabel } = await import("./utils/ui.js");
+          // Find the active key to use as default
+          const activeKey = keys.find((k) => k.isActive);
           const { chosenId } = await inquirer.prompt([
             {
               type: "list",
@@ -400,6 +402,7 @@ export const setupMcpServer = async (): Promise<void> => {
                 value: k.id,
                 short: k.name,
               })),
+              default: activeKey?.id,
               pageSize: Math.min(10, keys.length),
             },
           ]);
