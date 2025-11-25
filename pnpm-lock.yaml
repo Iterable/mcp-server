@@ -12,8 +12,8 @@ importers:
         specifier: 4.0.10
         version: 4.0.10(zod@4.1.11)
       '@iterable/api':
-        specifier: 0.5.0
-        version: 0.5.0(typescript@5.9.3)
+        specifier: 0.5.1
+        version: 0.5.1(typescript@5.9.3)
       '@modelcontextprotocol/sdk':
         specifier: 1.18.1
         version: 1.18.1
@@ -654,8 +654,8 @@ packages:
     resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
     engines: {node: '>=8'}
 
-  '@iterable/api@0.5.0':
-    resolution: {integrity: sha512-cxFhTzirG6kxr7DdgvRvBxZWoYX7NUPrebpxQsqfRFOwsnXdAA8nQVo5lnCtWmsmQHIp21hsXtL2A5kDIO6jzA==}
+  '@iterable/api@0.5.1':
+    resolution: {integrity: sha512-+tqqTANK9oGjmCKi/Z/WilcOjO79rQ9UuVZu4mKYWrsIv8xjYahSqLs9Lg0ZyM74yM+OdXUhh5l09UB5v+boUQ==}
     engines: {node: '>=18.0.0'}
 
   '@jest/console@30.2.0':
@@ -3226,7 +3226,7 @@ snapshots:
 
   '@istanbuljs/schema@0.1.3': {}
 
-  '@iterable/api@0.5.0(typescript@5.9.3)':
+  '@iterable/api@0.5.1(typescript@5.9.3)':
     dependencies:
       '@t3-oss/env-core': 0.13.8(typescript@5.9.3)(zod@4.1.11)
       axios: 1.13.2

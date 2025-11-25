@@ -15,6 +15,19 @@ import { z } from "zod";
 import { createTool } from "../schema-utils.js";
 
 export function createSnippetTools(client: IterableClient): Tool[] {
+  // WORKAROUND: Cursor rejects valid JSON Schema with "type": ["string", "number"].
+  // We accept strings only and convert numeric strings back to numbers.
+  // See: https://github.com/cursor/cursor/issues/3778
+  const identifier: z.ZodString = z
+    .string()
+    .describe(
+      "Snippet ID or name (stringified). Provide either a snippet name (string) or snippet ID (as a string)."
+    );
+
+  function maybeConvertNumericString(value: string): string | number {
+    return /^\d+$/.test(value) ? Number(value) : value;
+  }
+
   return [
     createTool({
       name: "get_snippets",
@@ -33,22 +46,32 @@ export function createSnippetTools(client: IterableClient): Tool[] {
     createTool({
       name: "get_snippet",
       description: "Get a snippet by ID (numeric) or name (string)",
-      schema: GetSnippetParamsSchema,
-      execute: (params) => client.getSnippet(params),
+      schema: GetSnippetParamsSchema.extend({ identifier }),
+      execute: ({ identifier }) =>
+        client.getSnippet({
+          identifier: maybeConvertNumericString(identifier),
+        }),
     }),
 
     createTool({
       name: "update_snippet",
       description: "Update a snippet by ID (numeric) or name (string)",
-      schema: UpdateSnippetParamsSchema,
-      execute: (params) => client.updateSnippet(params),
+      schema: UpdateSnippetParamsSchema.extend({ identifier }),
+      execute: (params) =>
+        client.updateSnippet({
+          ...params,
+          identifier: maybeConvertNumericString(params.identifier),
+        }),
     }),
 
     createTool({
       name: "delete_snippet",
       description: "Delete a snippet by ID (numeric) or name (string)",
-      schema: DeleteSnippetParamsSchema,
-      execute: (params) => client.deleteSnippet(params),
+      schema: DeleteSnippetParamsSchema.extend({ identifier }),
+      execute: ({ identifier }) =>
+        client.deleteSnippet({
+          identifier: maybeConvertNumericString(identifier),
+        }),
     }),
   ];
 }
