@@ -8,16 +8,18 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
 
-import { getKeyManager } from "./key-manager.js";
+import { type ApiKeyMetadata, getKeyManager } from "./key-manager.js";
+import { displayKeyDetails, saveKeyInteractive } from "./keys-cli.js";
+import {
+  COMMAND_NAME,
+  KEYS_COMMAND_TABLE,
+  NPX_PACKAGE_NAME,
+} from "./utils/command-info.js";
 import { getKeyStorageMessage } from "./utils/formatting.js";
 
 const { dirname, join } = path;
 
 // IMPORTANT: UI imports are loaded lazily inside functions to avoid ESM issues in Jest/CommonJS.
-
-// Executable/package names
-const LOCAL_BINARY_NAME = "iterable-mcp";
-const NPX_PACKAGE_NAME = "@iterable/mcp";
 
 // Get package version
 const packageJson = JSON.parse(
@@ -205,12 +207,6 @@ export const setupMcpServer = async (): Promise<void> => {
     ...(args.includes("--manual") ? ["manual" as const] : []),
   ];
 
-  // Detect how the command was invoked
-  const isNpx =
-    process.argv[1]?.includes("npx") ||
-    process.env.npm_execpath?.includes("npx");
-  const commandName = isNpx ? `npx ${NPX_PACKAGE_NAME}` : LOCAL_BINARY_NAME;
-
   if (showHelp) {
     const { createTable, icons, showBox, showIterableLogo, showSection } =
       await import("./utils/ui.js");
@@ -228,18 +224,21 @@ export const setupMcpServer = async (): Promise<void> => {
     });
 
     setupTable.push(
-      [`${commandName} setup --claude-desktop`, "Configure for Claude Desktop"],
-      [`${commandName} setup --cursor`, "Configure for Cursor"],
-      [`${commandName} setup --claude-code`, "Configure for Claude Code"],
-      [`${commandName} setup --gemini-cli`, "Configure for Gemini CLI"],
-      [`${commandName} setup --manual`, "Show manual config instructions"],
       [
-        `${commandName} setup --cursor --claude-desktop`,
+        `${COMMAND_NAME} setup --claude-desktop`,
+        "Configure for Claude Desktop",
+      ],
+      [`${COMMAND_NAME} setup --cursor`, "Configure for Cursor"],
+      [`${COMMAND_NAME} setup --claude-code`, "Configure for Claude Code"],
+      [`${COMMAND_NAME} setup --gemini-cli`, "Configure for Gemini CLI"],
+      [`${COMMAND_NAME} setup --manual`, "Show manual config instructions"],
+      [
+        `${COMMAND_NAME} setup --cursor --claude-desktop`,
         "Configure multiple tools",
       ],
-      [`${commandName} setup --cursor --debug`, "Enable debug logging"],
+      [`${COMMAND_NAME} setup --cursor --debug`, "Enable debug logging"],
       [
-        `${commandName} setup --cursor --auto-update`,
+        `${COMMAND_NAME} setup --cursor --auto-update`,
         "Always use latest version",
       ]
     );
@@ -257,12 +256,7 @@ export const setupMcpServer = async (): Promise<void> => {
       style: "normal",
     });
 
-    keysTable.push(
-      [`${commandName} keys list`, "View all stored API keys"],
-      [`${commandName} keys add`, "Add a new API key"],
-      [`${commandName} keys activate <name>`, "Switch to a different key"],
-      [`${commandName} keys delete <id>`, "Remove a key by ID"]
-    );
+    keysTable.push(...KEYS_COMMAND_TABLE);
 
     console.log(keysTable.toString());
     console.log();
@@ -306,7 +300,7 @@ export const setupMcpServer = async (): Promise<void> => {
       "Quick Start",
       [
         chalk.white.bold("1. Run setup for your AI tool:"),
-        chalk.cyan(`   ${commandName} setup --cursor`),
+        chalk.cyan(`   ${COMMAND_NAME} setup --cursor`),
         "",
         chalk.white.bold("2. Restart your AI tool"),
         "",
@@ -329,37 +323,7 @@ export const setupMcpServer = async (): Promise<void> => {
     return;
   }
 
-  // New behavior: if no tools were provided as flags, prompt user to select one or more
-  if (tools.length === 0) {
-    // Show logo first when no flags provided
-    const { showIterableLogo } = await import("./utils/ui.js");
-    console.clear();
-    showIterableLogo(packageJson.version);
-
-    const { selectedTools } = await inquirer.prompt<{
-      selectedTools: ToolName[];
-    }>([
-      {
-        type: "checkbox",
-        name: "selectedTools",
-        message: "Select your AI tools to configure:",
-        choices: [
-          { name: "Cursor", value: "cursor" },
-          { name: "Claude Desktop", value: "claude-desktop" },
-          { name: "Claude Code (CLI)", value: "claude-code" },
-          { name: "Gemini CLI", value: "gemini-cli" },
-          { name: "Other / Manual Setup", value: "manual" },
-        ],
-        validate: (arr: any) =>
-          Array.isArray(arr) && arr.length > 0
-            ? true
-            : "Please select at least one tool",
-      } as any,
-    ]);
-    tools = selectedTools;
-  }
-
-  // Start the setup flow
+  // Start the setup flow - show logo and load UI
   console.clear();
   const {
     formatKeyValue,
@@ -372,16 +336,9 @@ export const setupMcpServer = async (): Promise<void> => {
     showSuccess,
     showWarning,
     linkColor,
-    valueColor,
   } = await import("./utils/ui.js");
   const chalk = (await import("chalk")).default;
   showIterableLogo(packageJson.version);
-  // Succinct overview of what will be configured
-  console.log(
-    chalk.gray(
-      `Running setup to configure: ${tools.map((t) => TOOL_NAMES[t]).join(", ")}`
-    )
-  );
   console.log();
   const ora = (await import("ora")).default;
   const spinner = ora();
@@ -393,12 +350,8 @@ export const setupMcpServer = async (): Promise<void> => {
     console.log();
 
     let apiKey: string | undefined;
-    let keyName: string;
-    let baseUrl: string | undefined;
-
-    let usedKeyName: string | undefined;
     let usedExistingKey = false;
-    let selectedExistingMeta: any | undefined;
+    let selectedExistingMeta: ApiKeyMetadata | undefined;
 
     // 1) Offer using API key from environment
     if (process.env.ITERABLE_API_KEY) {
@@ -420,7 +373,7 @@ export const setupMcpServer = async (): Promise<void> => {
     // 2) If not using env key, offer using an existing stored key
     if (!apiKey) {
       const km = getKeyManager();
-      const keys = await km.listKeys().catch(() => [] as any[]);
+      const keys = await km.listKeys().catch(() => [] as ApiKeyMetadata[]);
       if (Array.isArray(keys) && keys.length > 0) {
         const { useExisting } = await inquirer.prompt([
           {
@@ -437,7 +390,7 @@ export const setupMcpServer = async (): Promise<void> => {
               type: "list",
               name: "chosenId",
               message: "Select a stored key:",
-              choices: keys.map((k: any) => ({
+              choices: keys.map((k) => ({
                 name: formatKeychainChoiceLabel(
                   k.name,
                   k.baseUrl,
@@ -452,13 +405,10 @@ export const setupMcpServer = async (): Promise<void> => {
           ]);
 
           try {
-            const meta = keys.find((k: any) => k.id === chosenId);
+            const meta = keys.find((k) => k.id === chosenId);
             if (!meta) throw new Error("Selected key metadata not found");
-            baseUrl = meta.baseUrl;
-            usedKeyName = meta.name;
             usedExistingKey = true;
             selectedExistingMeta = meta;
-            showSuccess(`Using existing key "${meta.name}"`);
           } catch (e) {
             showError(
               e instanceof Error
@@ -467,329 +417,161 @@ export const setupMcpServer = async (): Promise<void> => {
             );
             process.exit(1);
           }
-        }
-      }
-    }
-
-    // 3) If neither env nor existing key chosen, prompt for a new key
-    if (!apiKey && !usedExistingKey) {
-      const { newApiKey } = await inquirer.prompt([
-        {
-          type: "password",
-          name: "newApiKey",
-          message: "Enter your Iterable API key:",
-          validate: (input: string) => {
-            if (!input) return "API key is required";
-            if (!/^[a-f0-9]{32}$/.test(input))
-              return "API key must be a 32-character lowercase hexadecimal string";
-            return true;
-          },
-          mask: "*",
-        },
-      ]);
-      apiKey = newApiKey;
-    }
-
-    // Step 2: API Endpoint Selection
-    console.log();
-    showSection("API Endpoint Configuration", icons.globe);
-    console.log();
-
-    if (!baseUrl) {
-      if (process.env.ITERABLE_BASE_URL) {
-        baseUrl = process.env.ITERABLE_BASE_URL;
-        showSuccess(`Using API endpoint from environment: ${baseUrl}`);
-      } else {
-        const { promptForIterableBaseUrl } = await import(
-          "./utils/endpoint-prompt.js"
-        );
-        try {
-          baseUrl = await promptForIterableBaseUrl({
-            inquirer,
-            icons,
-            chalk,
-            showError,
-          });
-        } catch {
-          process.exit(1);
-        }
-      }
-    } else {
-      showSuccess(`Using API endpoint from selected key: ${baseUrl}`);
-    }
-
-    console.log();
-    console.log(
-      formatKeyValue("Selected endpoint", baseUrl as string, linkColor())
-    );
-    console.log();
-
-    // Step 3: Store the key securely
-    let existingKeyWithValue: any = null;
-    const keyManager = getKeyManager();
-
-    spinner.start("Initializing secure key storage...");
-    await keyManager.initialize();
-    spinner.succeed("Key storage ready");
-
-    // Check if key already exists
-    if (!usedExistingKey && apiKey) {
-      spinner.start("Checking for existing keys...");
-      existingKeyWithValue = await keyManager.findKeyByValue(apiKey as string);
-      spinner.stop();
-    }
-
-    if (usedExistingKey) {
-      // Offer to activate the selected existing key if not already active
-      if (!selectedExistingMeta?.isActive) {
-        const { activateExisting } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "activateExisting",
-            message: `Set "${selectedExistingMeta?.name}" as your active API key?`,
-            default: true,
-          },
-        ]);
-        if (activateExisting) {
-          await keyManager.setActiveKey(selectedExistingMeta!.id);
-          showSuccess(`"${selectedExistingMeta?.name}" is now your active key`);
         } else {
-          showInfo("Keeping your current active key");
+          console.log();
         }
+      }
+    }
+
+    if (!apiKey && !usedExistingKey) {
+      const keyManager = getKeyManager();
+      await keyManager.initialize();
+
+      const { getSpinner } = await import("./utils/cli-env.js");
+      const keySpinner = await getSpinner();
+
+      try {
+        const newKeyId = await saveKeyInteractive(
+          keyManager,
+          null,
+          {
+            chalk,
+            icons,
+            showError,
+            showSuccess,
+            showInfo,
+            formatKeyValue,
+            linkColor,
+            showBox: (await import("./utils/ui.js")).showBox,
+          },
+          keySpinner,
+          {
+            skipRestartNotice: true,
+            advanced,
+            autoActivate: true,
+          }
+        );
+
+        selectedExistingMeta =
+          (await keyManager.getKeyMetadata(newKeyId)) ?? undefined;
+      } catch (error) {
+        showError(error instanceof Error ? error.message : "Failed to add key");
+        process.exit(1);
+      }
+    } else if (usedExistingKey) {
+      const keyManager = getKeyManager();
+      await keyManager.initialize();
+
+      console.log();
+      if (!selectedExistingMeta?.isActive) {
+        const { getSpinner } = await import("./utils/cli-env.js");
+        const activateSpinner = await getSpinner();
+        activateSpinner.start("Activating key...");
+        await keyManager.setActiveKey(selectedExistingMeta!.id);
+        activateSpinner.succeed("Key activated successfully");
+        showSuccess(
+          `"${selectedExistingMeta?.name}" is now your active API key`
+        );
       } else {
         showSuccess(
           `"${selectedExistingMeta?.name}" is already your active key`
         );
       }
-    } else if (existingKeyWithValue) {
+
+      console.log();
+      displayKeyDetails(selectedExistingMeta!, {
+        chalk,
+        formatKeyValue,
+        linkColor,
+      });
+      console.log();
       showInfo(
-        `This API key is already stored as "${existingKeyWithValue.name}"`
+        `To modify permissions, run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}"`)}`
       );
-      usedKeyName = existingKeyWithValue.name;
-
-      if (!existingKeyWithValue.isActive) {
-        const { activateExisting } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "activateExisting",
-            message: `Set "${existingKeyWithValue.name}" as your active API key?`,
-            default: true,
-          },
-        ]);
-
-        if (activateExisting) {
-          await keyManager.setActiveKey(existingKeyWithValue.id);
-          showSuccess(`"${existingKeyWithValue.name}" is now your active key`);
-        } else {
-          showInfo("Keeping your current active key");
-        }
-      } else {
-        showSuccess(
-          `"${existingKeyWithValue.name}" is already your active key`
-        );
-      }
     } else {
-      // New key - prompt for name
-      const { newKeyName } = await inquirer.prompt([
-        {
-          type: "input",
-          name: "newKeyName",
-          message: "Enter a name for this API key:",
-          default: "default",
-          validate: (input: string) => {
-            if (input && input.length > 50)
-              return "Key name must be 50 characters or less";
-            return true;
-          },
-        },
-      ]);
+      const keyManager = getKeyManager();
+      await keyManager.initialize();
 
-      keyName = newKeyName || "default";
+      const { getSpinner } = await import("./utils/cli-env.js");
+      const keySpinner = await getSpinner();
 
-      spinner.start("Storing API key securely...");
       try {
-        const newKeyId = await keyManager.addKey(
-          keyName,
-          apiKey as string,
-          baseUrl as string
-        );
-        spinner.succeed("API key stored successfully!");
-
-        console.log();
-        console.log(formatKeyValue("Name", keyName, chalk.white.bold));
-        console.log(formatKeyValue("ID", newKeyId, chalk.gray));
-        console.log(formatKeyValue("Endpoint", baseUrl as string, chalk.cyan));
-        console.log();
-        usedKeyName = keyName;
-
-        // Check if we should activate this key
-        const allKeys = await keyManager.listKeys();
-        if (allKeys.length > 1) {
-          const { activateNew } = await inquirer.prompt([
-            {
-              type: "confirm",
-              name: "activateNew",
-              message: `Set "${keyName}" as your active API key?`,
-              default: true,
-            },
-          ]);
-
-          if (activateNew) {
-            await keyManager.setActiveKey(newKeyId);
-            showSuccess(`"${keyName}" is now your active key`);
-          } else {
-            showInfo(
-              `Keeping your current active key. Run 'iterable-mcp keys activate "${keyName}"' to switch later.`
-            );
+        const newKeyId = await saveKeyInteractive(
+          keyManager,
+          null,
+          {
+            chalk,
+            icons,
+            showError,
+            showSuccess,
+            showInfo,
+            formatKeyValue,
+            linkColor,
+            showBox: (await import("./utils/ui.js")).showBox,
+          },
+          keySpinner,
+          {
+            skipRestartNotice: true,
+            advanced,
+            prefilledApiKey: apiKey as string,
+            autoActivate: true,
           }
-        }
+        );
+
+        selectedExistingMeta =
+          (await keyManager.getKeyMetadata(newKeyId)) ?? undefined;
       } catch (error) {
-        const { sanitizeString } = await import("./utils/sanitize.js");
-        spinner.fail("Failed to store API key");
-        console.log();
-        const msg =
-          error instanceof Error
-            ? sanitizeString(error.message)
-            : "Unknown error";
-        showError(msg);
-        console.log();
-        showInfo(
-          "Your API key was not stored. You can re-run 'iterable-mcp setup' to try again."
-        );
-        showInfo(
-          "If the problem persists, verify storage access and disk permissions."
-        );
+        showError(error instanceof Error ? error.message : "Failed to add key");
         process.exit(1);
       }
     }
 
-    // Step 4: Privacy & Security Settings (Basic by default; Advanced via --advanced)
-    console.log();
-    showSection("Privacy & Security Settings", icons.lock);
-    console.log();
-
-    // Default conservative env flags
-    let selectedEnv: {
-      ITERABLE_USER_PII: "true" | "false";
-      ITERABLE_ENABLE_WRITES: "true" | "false";
-      ITERABLE_ENABLE_SENDS: "true" | "false";
-    } = {
-      ITERABLE_USER_PII: "false",
-      ITERABLE_ENABLE_WRITES: "false",
-      ITERABLE_ENABLE_SENDS: "false",
-    };
-
-    if (advanced) {
-      const { permFlags } = await inquirer.prompt([
-        {
-          type: "checkbox",
-          name: "permFlags",
-          message: "Select permissions to enable (default: none):",
-          choices: [
-            { name: "View PII (access user data)", value: "pii" },
-            {
-              name: "Write operations (create/update/delete)",
-              value: "writes",
-            },
-            { name: "Sends (campaigns/journeys/events)", value: "sends" },
-          ],
-          pageSize: 6,
-          default: [],
-        },
-      ] as any);
-      selectedEnv = {
-        ITERABLE_USER_PII: (permFlags as string[]).includes("pii")
-          ? "true"
-          : "false",
-        ITERABLE_ENABLE_WRITES: (permFlags as string[]).includes("writes")
-          ? "true"
-          : "false",
-        ITERABLE_ENABLE_SENDS: (permFlags as string[]).includes("sends")
-          ? "true"
-          : "false",
-      };
+    if (!selectedExistingMeta) {
+      showError("Failed to get key metadata after setup");
+      process.exit(1);
     }
 
-    let mcpEnv: Record<string, string> = {
-      ITERABLE_USER_PII: selectedEnv.ITERABLE_USER_PII,
-      ITERABLE_ENABLE_WRITES: selectedEnv.ITERABLE_ENABLE_WRITES,
-      ITERABLE_ENABLE_SENDS: selectedEnv.ITERABLE_ENABLE_SENDS,
-    };
+    let mcpEnv: Record<string, string> = pickPersistablePermissionEnv(
+      selectedExistingMeta.env || {}
+    );
+
     if (args.includes("--debug")) {
       mcpEnv.ITERABLE_DEBUG = "true";
       mcpEnv.LOG_LEVEL = "debug";
     }
-    // Enforce permission invariants before displaying
+
     mcpEnv = enforceSendsRequiresWrites(mcpEnv, (msg) => showWarning(msg));
-
-    console.log();
-    console.log(
-      formatKeyValue(
-        "User PII Access",
-        mcpEnv.ITERABLE_USER_PII === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    console.log(
-      formatKeyValue(
-        "Write Operations",
-        mcpEnv.ITERABLE_ENABLE_WRITES === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    console.log(
-      formatKeyValue(
-        "Sends",
-        mcpEnv.ITERABLE_ENABLE_SENDS === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    // Only show the default note when all flags are disabled
-    if (
-      mcpEnv.ITERABLE_USER_PII !== "true" &&
-      mcpEnv.ITERABLE_ENABLE_WRITES !== "true" &&
-      mcpEnv.ITERABLE_ENABLE_SENDS !== "true"
-    ) {
-      console.log();
-      console.log(
-        chalk.gray(
-          "Note: These are disabled by default. If you absolutely need to enable these, run 'iterable-mcp setup --advanced'"
-        )
-      );
-    } else {
-      console.log();
-      showWarning(
-        "Warning: Elevated capabilities enabled. Sends, writes, and/or PII access may now occur."
-      );
-    }
-    console.log();
-
-    // If we used an existing key, persist the chosen settings to it
-    if (usedKeyName) {
-      try {
-        await keyManager.updateKeyEnv(
-          usedKeyName,
-          pickPersistablePermissionEnv(mcpEnv)
-        );
-      } catch (err) {
-        if (process.env.ITERABLE_DEBUG === "true") {
-          console.warn(
-            "Non-fatal: failed to persist per-key env settings",
-            err
-          );
-        }
-      }
-    }
 
     // Step 5: Configure AI Tools
     console.log();
-    showSection("Configuring AI Tools", icons.zap);
+    showSection("Configure AI Tools", icons.zap);
     console.log();
 
-    // Ask about auto-update unless flag was provided
+    if (tools.length === 0) {
+      const { selectedTools } = await inquirer.prompt<{
+        selectedTools: ToolName[];
+      }>([
+        {
+          type: "checkbox",
+          name: "selectedTools",
+          message: "Select your AI tools to configure:",
+          choices: [
+            { name: "Cursor", value: "cursor" },
+            { name: "Claude Desktop", value: "claude-desktop" },
+            { name: "Claude Code (CLI)", value: "claude-code" },
+            { name: "Gemini CLI", value: "gemini-cli" },
+            { name: "Other / Manual Setup", value: "manual" },
+          ],
+          validate: (arr) =>
+            Array.isArray(arr) && arr.length > 0
+              ? true
+              : "Please select at least one tool",
+        },
+      ]);
+      tools = selectedTools;
+      console.log();
+    }
+
     let useAutoUpdate = autoUpdate;
     if (!autoUpdate) {
       const { enableAutoUpdate } = await inquirer.prompt([
@@ -801,6 +583,7 @@ export const setupMcpServer = async (): Promise<void> => {
           default: false,
         },
       ]);
+      console.log();
       useAutoUpdate = enableAutoUpdate;
     }
 
@@ -809,57 +592,6 @@ export const setupMcpServer = async (): Promise<void> => {
       env: omitPersistablePermissionEnv(mcpEnv),
       autoUpdate: useAutoUpdate,
     });
-
-    // Preflight confirmation summary before applying changes
-    console.log(chalk.gray("Summary:"));
-    console.log(
-      formatKeyValue(
-        "Tools",
-        tools.map((t) => TOOL_NAMES[t]).join(", "),
-        valueColor()
-      )
-    );
-    if (usedKeyName) {
-      console.log(formatKeyValue("API Key", usedKeyName, valueColor()));
-    }
-    console.log(formatKeyValue("Endpoint", baseUrl as string, valueColor()));
-    console.log(
-      formatKeyValue(
-        "User PII",
-        mcpEnv.ITERABLE_USER_PII === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    console.log(
-      formatKeyValue(
-        "Writes",
-        mcpEnv.ITERABLE_ENABLE_WRITES === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    console.log(
-      formatKeyValue(
-        "Sends",
-        mcpEnv.ITERABLE_ENABLE_SENDS === "true"
-          ? chalk.green("Enabled")
-          : chalk.gray("Disabled")
-      )
-    );
-    console.log();
-    const { proceed } = await inquirer.prompt<{ proceed: boolean }>([
-      {
-        type: "confirm",
-        name: "proceed",
-        message: "Proceed with configuration?",
-        default: true,
-      },
-    ]);
-    if (!proceed) {
-      showInfo("Setup cancelled by user. No changes were made.");
-      return;
-    }
 
     const fileBasedTools = tools.filter(
       (tool): tool is FileBasedToolName => tool in TOOL_CONFIGS
@@ -895,13 +627,14 @@ export const setupMcpServer = async (): Promise<void> => {
           "Please install Claude Code first: https://docs.claude.com/en/docs/claude-code/overview"
         );
         console.log();
-        showInfo("After installing, re-run: iterable-mcp setup --claude-code");
+        showInfo(
+          `After installing, re-run: ${COMMAND_NAME} setup --claude-code`
+        );
         process.exit(1);
       }
 
       const configJson = JSON.stringify(iterableMcpConfig);
 
-      // Remove existing config (ignore errors)
       await execFileAsync("claude", ["mcp", "remove", "iterable"]).catch(
         () => {}
       );
@@ -936,13 +669,11 @@ export const setupMcpServer = async (): Promise<void> => {
     }
 
     if (needsManual) {
-      console.log();
       showSection("Manual Configuration", icons.rocket);
       console.log();
 
       const { type, command, args, env } = iterableMcpConfig;
 
-      showInfo("Your API key has been stored.");
       showInfo("Add the MCP server to your AI tool with these settings:");
       console.log();
       console.log(chalk.white.bold("  Type:") + `     ${type}`);
@@ -962,7 +693,6 @@ export const setupMcpServer = async (): Promise<void> => {
       );
     }
 
-    // Build configured tools list
     const configuredTools: string[] = [];
     if (fileBasedTools.includes("cursor")) configuredTools.push("Cursor");
     if (fileBasedTools.includes("claude-desktop"))
@@ -981,7 +711,6 @@ export const setupMcpServer = async (): Promise<void> => {
             ", and " +
             configuredTools[configuredTools.length - 1];
 
-    // Success!
     console.log();
     const nextSteps = [
       ...(needsManual ? ["Configure your AI tool as described above"] : []),
@@ -994,8 +723,8 @@ export const setupMcpServer = async (): Promise<void> => {
 
     const tips = [
       `Try: 'list my Iterable campaigns' in ${toolsList}`,
-      "Manage keys with 'iterable-mcp keys list'",
-      "Switch keys with 'iterable-mcp keys activate <name>'",
+      `Manage keys with '${COMMAND_NAME} keys list'`,
+      `Switch keys with '${COMMAND_NAME} keys activate <name>'`,
     ];
 
     showCompletion("Setup Complete!", nextSteps, tips);

@@ -1,10 +1,14 @@
 import { isHttpsOrLocalhost, isLocalhostHost } from "./url.js";
 
+const US_ENDPOINT = "https://api.iterable.com";
+const EU_ENDPOINT = "https://api.eu.iterable.com";
+
 export interface EndpointPromptDeps {
   inquirer: any; // inquirer module (real or shim)
   icons: { globe?: string };
   chalk: any; // chalk instance
   showError: (message: string) => void;
+  defaultBaseUrl?: string;
 }
 
 /**
@@ -14,12 +18,24 @@ export interface EndpointPromptDeps {
 export async function promptForIterableBaseUrl(
   deps: EndpointPromptDeps
 ): Promise<string> {
-  const { inquirer, icons, chalk, showError } = deps;
+  const { inquirer, icons, chalk, showError, defaultBaseUrl } = deps;
 
   // On Windows consoles, flag/globe emojis often render poorly; hide them.
   const allowFlagEmoji = process.platform !== "win32";
   const globePrefix =
     process.platform !== "win32" ? `${icons.globe || "🌍"}  ` : "";
+
+  // Determine default based on existing baseUrl
+  let defaultChoice = "us";
+  if (defaultBaseUrl) {
+    if (defaultBaseUrl === US_ENDPOINT) {
+      defaultChoice = "us";
+    } else if (defaultBaseUrl === EU_ENDPOINT) {
+      defaultChoice = "eu";
+    } else {
+      defaultChoice = "custom";
+    }
+  }
 
   const { endpointChoice } = await inquirer.prompt([
     {
@@ -43,12 +59,12 @@ export async function promptForIterableBaseUrl(
           short: "Custom",
         },
       ],
-      default: "us",
+      default: defaultChoice,
     },
   ]);
 
-  if (endpointChoice === "us") return "https://api.iterable.com";
-  if (endpointChoice === "eu") return "https://api.eu.iterable.com";
+  if (endpointChoice === "us") return US_ENDPOINT;
+  if (endpointChoice === "eu") return EU_ENDPOINT;
 
   // Custom endpoint
   const { customUrl } = await inquirer.prompt([
@@ -56,6 +72,7 @@ export async function promptForIterableBaseUrl(
       type: "input",
       name: "customUrl",
       message: "Enter custom API endpoint URL:",
+      default: defaultChoice === "custom" ? defaultBaseUrl : undefined,
       validate: (input: string) => {
         if (!input) return "URL is required";
         try {
