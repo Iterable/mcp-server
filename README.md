@@ -331,6 +331,26 @@ iterable-mcp keys update <key-name> --advanced
 
 **Process persistence:** After switching API keys with `keys activate`, you must **fully restart Windsurf** (quit and reopen the application). Windsurf keeps MCP server processes running in the background, and they don't automatically reload when you switch keys.
 
+#### Antigravity
+
+**Tool limit:** Antigravity has a maximum limit of 100 tools per MCP server. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **104 tools**, which exceeds this limit.
+
+**Workaround:** Use restricted permissions to stay under the 100-tool limit:
+- With default permissions (all disabled): 26 tools ✅
+- With PII only: 37 tools ✅
+- With PII + writes: 86 tools ✅
+- With all permissions: 104 tools ❌ (exceeds Antigravity limit)
+
+You can configure permissions when adding a key:
+```bash
+iterable-mcp keys add --advanced
+```
+
+Or update an existing key's permissions:
+```bash
+iterable-mcp keys update <key-name> --advanced
+```
+
 ## Beta Feature Reminder
 Iterable's MCP server is currently in beta. MCP functionality may change, be
 suspended, or be discontinued at any time without notice. This software is
