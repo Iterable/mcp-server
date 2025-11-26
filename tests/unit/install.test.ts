@@ -12,6 +12,18 @@ describe("MCP Server Setup Configuration", () => {
       expect(cursorPath).toContain("mcp.json");
     });
 
+    it("should generate correct Windsurf config path", () => {
+      const windsurfPath = path.join(
+        os.homedir(),
+        ".codeium",
+        "windsurf",
+        "mcp_config.json"
+      );
+      expect(windsurfPath).toContain(".codeium");
+      expect(windsurfPath).toContain("windsurf");
+      expect(windsurfPath).toContain("mcp_config.json");
+    });
+
     it("should generate correct Claude Desktop path on Darwin", () => {
       if (process.platform === "darwin") {
         const claudePath = path.join(
@@ -218,10 +230,14 @@ describe("MCP Server Setup Configuration", () => {
 
       // Simulate what each tool would get
       const cursorConfig = { mcpServers: { iterable: baseConfig } };
+      const windsurfConfig = { mcpServers: { iterable: baseConfig } };
       const claudeDesktopConfig = { mcpServers: { iterable: baseConfig } };
       const claudeCodeConfig = baseConfig; // Claude Code uses JSON directly
 
-      // All should have the same iterable config
+      // All file-based tools should have the same iterable config
+      expect(cursorConfig.mcpServers.iterable).toEqual(
+        windsurfConfig.mcpServers.iterable
+      );
       expect(cursorConfig.mcpServers.iterable).toEqual(
         claudeDesktopConfig.mcpServers.iterable
       );

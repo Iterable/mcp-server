@@ -6,6 +6,10 @@ export function getCursorConfigPath(): string {
   return path.join(os.homedir(), ".cursor", "mcp.json");
 }
 
+export function getWindsurfConfigPath(): string {
+  return path.join(os.homedir(), ".codeium", "windsurf", "mcp_config.json");
+}
+
 export function getClaudeDesktopConfigPath(): string {
   switch (process.platform) {
     case "darwin":
