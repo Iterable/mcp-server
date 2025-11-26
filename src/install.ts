@@ -29,13 +29,14 @@ const packageJson = JSON.parse(
   )
 ) as { version: string };
 
-// Tool display names
+// Tool display names (ordered by popularity/recommendation)
 type ToolName = keyof typeof TOOL_NAMES;
 const TOOL_NAMES = {
   cursor: "Cursor",
   "claude-desktop": "Claude Desktop",
   "claude-code": "Claude Code",
   "gemini-cli": "Gemini CLI",
+  windsurf: "Windsurf",
   manual: "Manual Setup",
 } as const;
 
@@ -66,6 +67,7 @@ const TOOL_CONFIGS = {
     }
   })(),
   cursor: path.join(os.homedir(), ".cursor", "mcp.json"),
+  windsurf: path.join(os.homedir(), ".codeium", "windsurf", "mcp_config.json"),
   "gemini-cli": path.join(os.homedir(), ".gemini", "settings.json"),
 } as const satisfies Record<string, string>;
 
@@ -200,10 +202,11 @@ export const setupMcpServer = async (): Promise<void> => {
   const advanced = args.includes("--advanced");
   const autoUpdate = args.includes("--auto-update");
   let tools: ToolName[] = [
-    ...(args.includes("--claude-desktop") ? ["claude-desktop" as const] : []),
     ...(args.includes("--cursor") ? ["cursor" as const] : []),
+    ...(args.includes("--claude-desktop") ? ["claude-desktop" as const] : []),
     ...(args.includes("--claude-code") ? ["claude-code" as const] : []),
     ...(args.includes("--gemini-cli") ? ["gemini-cli" as const] : []),
+    ...(args.includes("--windsurf") ? ["windsurf" as const] : []),
     ...(args.includes("--manual") ? ["manual" as const] : []),
   ];
 
@@ -224,13 +227,14 @@ export const setupMcpServer = async (): Promise<void> => {
     });
 
     setupTable.push(
+      [`${COMMAND_NAME} setup --cursor`, "Configure for Cursor"],
       [
         `${COMMAND_NAME} setup --claude-desktop`,
         "Configure for Claude Desktop",
       ],
-      [`${COMMAND_NAME} setup --cursor`, "Configure for Cursor"],
       [`${COMMAND_NAME} setup --claude-code`, "Configure for Claude Code"],
       [`${COMMAND_NAME} setup --gemini-cli`, "Configure for Gemini CLI"],
+      [`${COMMAND_NAME} setup --windsurf`, "Configure for Windsurf"],
       [`${COMMAND_NAME} setup --manual`, "Show manual config instructions"],
       [
         `${COMMAND_NAME} setup --cursor --claude-desktop`,
@@ -563,6 +567,7 @@ export const setupMcpServer = async (): Promise<void> => {
             { name: "Claude Desktop", value: "claude-desktop" },
             { name: "Claude Code (CLI)", value: "claude-code" },
             { name: "Gemini CLI", value: "gemini-cli" },
+            { name: "Windsurf", value: "windsurf" },
             { name: "Other / Manual Setup", value: "manual" },
           ],
           validate: (arr) =>
@@ -700,9 +705,10 @@ export const setupMcpServer = async (): Promise<void> => {
     if (fileBasedTools.includes("cursor")) configuredTools.push("Cursor");
     if (fileBasedTools.includes("claude-desktop"))
       configuredTools.push("Claude Desktop");
+    if (needsClaudeCode) configuredTools.push("Claude Code");
     if (fileBasedTools.includes("gemini-cli"))
       configuredTools.push("Gemini CLI");
-    if (needsClaudeCode) configuredTools.push("Claude Code");
+    if (fileBasedTools.includes("windsurf")) configuredTools.push("Windsurf");
     if (needsManual) configuredTools.push("your AI tool");
 
     const toolsList =
