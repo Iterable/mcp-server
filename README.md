@@ -2,14 +2,21 @@
 
 [![npm version](https://img.shields.io/npm/v/@iterable/mcp.svg)](https://www.npmjs.com/package/@iterable/mcp)
 
-![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
+![Iterable MCP Server](images/iterable-mcp-server.png)
 
+Talk to your Iterable data using natural language. Ask questions or give instructions like *"How many campaigns did we send last week?"*, *"Show me my most recent templates"*, or *"Build me a beautiful email template that does the following..."* and get instant answers without writing code or navigating dashboards.
 
-With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, Gemini CLI, and Antigravity!
+**Supported AI clients:**
+- [Cursor](https://cursor.com/)
+- [Claude Desktop](https://www.claude.com/download)
+- [Claude Code](https://github.com/anthropics/claude-code)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- [Windsurf](https://windsurf.com/)
+- [Antigravity by Google](https://antigravity.google/)
 
 ## What is MCP?
 
-MCP stands for Model Context Protocol. It's a new, open standard that lets AI tools (like Cursor or Claude Desktop) connect to external tools and APIs in a secure, structured way. MCP acts as a "bridge" between your AI app and platforms like Iterable, so you can ask questions or perform actions in plain English, and the AI translates those into safe API calls behind the scenes.
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard that lets AI assistants securely connect to external tools and APIs. This server acts as a bridge between your AI client and Iterable, translating natural language requests into safe API calls.
 
 ## Installation
 
@@ -20,6 +27,9 @@ MCP stands for Model Context Protocol. It's a new, open standard that lets AI to
 ```bash
 npx @iterable/mcp setup
 ```
+
+![Iterable MCP Server Setup](images/iterable-mcp-server-setup.gif)
+
 
 To always use the latest version (auto-update on each restart), add `--auto-update`:
 
