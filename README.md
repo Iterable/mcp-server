@@ -1,5 +1,7 @@
 # Iterable MCP Server
 
+[![npm version](https://img.shields.io/npm/v/@iterable/mcp.svg)](https://www.npmjs.com/package/@iterable/mcp)
+
 ![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
 
 
