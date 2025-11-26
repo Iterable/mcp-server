@@ -10,6 +10,10 @@ export function getWindsurfConfigPath(): string {
   return path.join(os.homedir(), ".codeium", "windsurf", "mcp_config.json");
 }
 
+export function getAntigravityConfigPath(): string {
+  return path.join(os.homedir(), ".gemini", "antigravity", "mcp_config.json");
+}
+
 export function getClaudeDesktopConfigPath(): string {
   switch (process.platform) {
     case "darwin":

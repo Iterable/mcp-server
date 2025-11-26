@@ -3,12 +3,37 @@ import os from "os";
 import path from "path";
 
 import {
+  getAntigravityConfigPath,
   getClaudeDesktopConfigPath,
   getCursorConfigPath,
   getWindsurfConfigPath,
 } from "../../src/utils/tool-config.js";
 
 describe("tool-config paths", () => {
+  describe("getAntigravityConfigPath", () => {
+    it("returns path in home directory .gemini/antigravity folder", () => {
+      const configPath = getAntigravityConfigPath();
+      expect(configPath).toBe(
+        path.join(os.homedir(), ".gemini", "antigravity", "mcp_config.json")
+      );
+    });
+
+    it("returns a path ending with mcp_config.json", () => {
+      const configPath = getAntigravityConfigPath();
+      expect(configPath).toMatch(/mcp_config\.json$/);
+    });
+
+    it("returns a path containing .gemini", () => {
+      const configPath = getAntigravityConfigPath();
+      expect(configPath).toContain(".gemini");
+    });
+
+    it("returns a path containing antigravity", () => {
+      const configPath = getAntigravityConfigPath();
+      expect(configPath).toContain("antigravity");
+    });
+  });
+
   describe("getCursorConfigPath", () => {
     it("returns path in home directory .cursor folder", () => {
       const configPath = getCursorConfigPath();
@@ -76,12 +101,14 @@ describe("tool-config paths", () => {
       expect(path.isAbsolute(getCursorConfigPath())).toBe(true);
       expect(path.isAbsolute(getWindsurfConfigPath())).toBe(true);
       expect(path.isAbsolute(getClaudeDesktopConfigPath())).toBe(true);
+      expect(path.isAbsolute(getAntigravityConfigPath())).toBe(true);
     });
 
     it("all config paths end with .json", () => {
       expect(getCursorConfigPath()).toMatch(/\.json$/);
       expect(getWindsurfConfigPath()).toMatch(/\.json$/);
       expect(getClaudeDesktopConfigPath()).toMatch(/\.json$/);
+      expect(getAntigravityConfigPath()).toMatch(/\.json$/);
     });
   });
 });

@@ -3,7 +3,7 @@
 ![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
 
 
-With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, and Gemini CLI!
+With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, Gemini CLI, and Antigravity!
 
 ## What is MCP?
 
@@ -94,15 +94,16 @@ claude mcp add-from-claude-desktop
 
 For more information, see the [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp).
 
-### Manual configuration (Cursor, Claude Desktop, Windsurf & Gemini CLI)
+### Manual configuration (Cursor, Claude Desktop, Windsurf, Gemini CLI & Antigravity)
 
 The above commands will automatically configure your AI tool to use the MCP server by editing the appropriate configuration file, but you can also manually edit the appropriate configuration file:
 - **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Cursor:** `~/.cursor/mcp.json`
 - **Windsurf:** `~/.codeium/windsurf/mcp_config.json`
+- **Antigravity:** `~/.gemini/antigravity/mcp_config.json`
 - **Gemini CLI:** `~/.gemini/settings.json`
 
-All four use the same configuration format:
+All five use the same configuration format:
 
 **Recommended: Using key manager:**
 ```bash
