@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@iterable/mcp.svg)](https://www.npmjs.com/package/@iterable/mcp)
 
-![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
+![Iterable MCP Server](images/iterable-mcp-server.png)
 
 
 With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, Gemini CLI, and Antigravity!
@@ -20,6 +20,9 @@ MCP stands for Model Context Protocol. It's a new, open standard that lets AI to
 ```bash
 npx @iterable/mcp setup
 ```
+
+![Iterable MCP Server Setup](images/iterable-mcp-server-setup.gif)
+
 
 To always use the latest version (auto-update on each restart), add `--auto-update`:
 
