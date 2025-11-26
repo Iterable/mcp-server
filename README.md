@@ -4,7 +4,7 @@
 
 ![Iterable MCP Server](images/iterable-mcp-server.png)
 
-Talk to your Iterable data using natural language. Ask questions or give instructions like *"How many campaigns did we send last week?"*, *"Show me my most recent templates"*, or *"Build me a beautiful email template that does the following..."* — and get instant answers without writing code or navigating dashboards.
+Talk to your Iterable data using natural language. Ask questions or give instructions like *"How many campaigns did we send last week?"*, *"Show me my most recent templates"*, or *"Build me a beautiful email template that does the following..."* and get instant answers without writing code or navigating dashboards.
 
 **Supported AI clients:**
 - [Cursor](https://cursor.com/)
