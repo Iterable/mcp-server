@@ -3,7 +3,7 @@
 ![Iterable MCP Server Setup](images/iterable-mcp-setup.png)
 
 
-With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, and Gemini CLI!
+With the new Iterable MCP server, you can now connect Iterable to your favorite AI tools like Cursor, Claude Desktop, Claude Code, Windsurf, Gemini CLI, and Antigravity!
 
 ## What is MCP?
 
@@ -94,15 +94,16 @@ claude mcp add-from-claude-desktop
 
 For more information, see the [Claude Code MCP documentation](https://docs.claude.com/en/docs/claude-code/mcp).
 
-### Manual configuration (Cursor, Claude Desktop, Windsurf & Gemini CLI)
+### Manual configuration (Cursor, Claude Desktop, Windsurf, Gemini CLI & Antigravity)
 
 The above commands will automatically configure your AI tool to use the MCP server by editing the appropriate configuration file, but you can also manually edit the appropriate configuration file:
 - **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Cursor:** `~/.cursor/mcp.json`
 - **Windsurf:** `~/.codeium/windsurf/mcp_config.json`
+- **Antigravity:** `~/.gemini/antigravity/mcp_config.json`
 - **Gemini CLI:** `~/.gemini/settings.json`
 
-All four use the same configuration format:
+All five use the same configuration format:
 
 **Recommended: Using key manager:**
 ```bash
@@ -329,6 +330,26 @@ iterable-mcp keys update <key-name> --advanced
 ```
 
 **Process persistence:** After switching API keys with `keys activate`, you must **fully restart Windsurf** (quit and reopen the application). Windsurf keeps MCP server processes running in the background, and they don't automatically reload when you switch keys.
+
+#### Antigravity
+
+**Tool limit:** Antigravity has a maximum limit of 100 tools per MCP server. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **104 tools**, which exceeds this limit.
+
+**Workaround:** Use restricted permissions to stay under the 100-tool limit:
+- With default permissions (all disabled): 26 tools ✅
+- With PII only: 37 tools ✅
+- With PII + writes: 86 tools ✅
+- With all permissions: 104 tools ❌ (exceeds Antigravity limit)
+
+You can configure permissions when adding a key:
+```bash
+iterable-mcp keys add --advanced
+```
+
+Or update an existing key's permissions:
+```bash
+iterable-mcp keys update <key-name> --advanced
+```
 
 ## Beta Feature Reminder
 Iterable's MCP server is currently in beta. MCP functionality may change, be

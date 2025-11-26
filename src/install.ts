@@ -37,6 +37,7 @@ const TOOL_NAMES = {
   "claude-code": "Claude Code",
   "gemini-cli": "Gemini CLI",
   windsurf: "Windsurf",
+  antigravity: "Antigravity",
   manual: "Manual Setup",
 } as const;
 
@@ -66,6 +67,12 @@ const TOOL_CONFIGS = {
         );
     }
   })(),
+  antigravity: path.join(
+    os.homedir(),
+    ".gemini",
+    "antigravity",
+    "mcp_config.json"
+  ),
   cursor: path.join(os.homedir(), ".cursor", "mcp.json"),
   windsurf: path.join(os.homedir(), ".codeium", "windsurf", "mcp_config.json"),
   "gemini-cli": path.join(os.homedir(), ".gemini", "settings.json"),
@@ -207,6 +214,7 @@ export const setupMcpServer = async (): Promise<void> => {
     ...(args.includes("--claude-code") ? ["claude-code" as const] : []),
     ...(args.includes("--gemini-cli") ? ["gemini-cli" as const] : []),
     ...(args.includes("--windsurf") ? ["windsurf" as const] : []),
+    ...(args.includes("--antigravity") ? ["antigravity" as const] : []),
     ...(args.includes("--manual") ? ["manual" as const] : []),
   ];
 
@@ -235,6 +243,7 @@ export const setupMcpServer = async (): Promise<void> => {
       [`${COMMAND_NAME} setup --claude-code`, "Configure for Claude Code"],
       [`${COMMAND_NAME} setup --gemini-cli`, "Configure for Gemini CLI"],
       [`${COMMAND_NAME} setup --windsurf`, "Configure for Windsurf"],
+      [`${COMMAND_NAME} setup --antigravity`, "Configure for Antigravity"],
       [`${COMMAND_NAME} setup --manual`, "Show manual config instructions"],
       [
         `${COMMAND_NAME} setup --cursor --claude-desktop`,
@@ -568,6 +577,7 @@ export const setupMcpServer = async (): Promise<void> => {
             { name: "Claude Code (CLI)", value: "claude-code" },
             { name: "Gemini CLI", value: "gemini-cli" },
             { name: "Windsurf", value: "windsurf" },
+            { name: "Antigravity", value: "antigravity" },
             { name: "Other / Manual Setup", value: "manual" },
           ],
           validate: (arr) =>
@@ -709,6 +719,8 @@ export const setupMcpServer = async (): Promise<void> => {
     if (fileBasedTools.includes("gemini-cli"))
       configuredTools.push("Gemini CLI");
     if (fileBasedTools.includes("windsurf")) configuredTools.push("Windsurf");
+    if (fileBasedTools.includes("antigravity"))
+      configuredTools.push("Antigravity");
     if (needsManual) configuredTools.push("your AI tool");
 
     const toolsList =
