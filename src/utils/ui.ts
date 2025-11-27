@@ -37,7 +37,9 @@ const THEME = {
 } as const;
 
 function linkHex(): string {
-  return isDarkBackground() ? THEME.accent : "#0EA5E9"; // sky-500 on light
+  // Use brighter cyan on dark backgrounds for better visibility
+  // Use darker blue on light backgrounds for readability
+  return isDarkBackground() ? "#7DD3FC" : "#0369A1"; // sky-300 on dark, sky-700 on light
 }
 
 export function linkColor() {
@@ -89,35 +91,65 @@ export const icons = {
 // Order of precedence:
 // 1) Explicit override via ITERABLE_UI_THEME=dark|light
 // 2) COLORFGBG heuristic when available
-// 3) Known terminals (Apple_Terminal defaults to light)
-// 4) Fallback: assume light (safer for macOS default Terminal)
+// 3) Check for NO_COLOR or other accessibility envs
+// 4) Known terminals with improved detection
+// 5) Fallback: safer to assume LIGHT to avoid dark-text-on-dark-background issues
 function isDarkBackground(): boolean {
   const override = (process.env.ITERABLE_UI_THEME || "").toLowerCase();
   if (override === "dark") return true;
   if (override === "light") return false;
 
+  // Check for NO_COLOR or similar accessibility settings
+  if (process.env.NO_COLOR) {
+    // When NO_COLOR is set, assume light background for better contrast
+    return false;
+  }
+
+  // COLORFGBG heuristic (commonly set in many terminals)
   const cfg = process.env.COLORFGBG;
   if (cfg) {
     const parts = cfg.split(";");
     const bg = parseInt(parts[parts.length - 1] || "", 10);
     if (!Number.isNaN(bg)) {
-      return bg <= 7; // 0-7 dark, 8-15 light
+      // 0-7 are dark colors, 8-15 are light colors
+      return bg <= 7;
     }
   }
 
+  // Terminal-specific detection
   const term = process.env.TERM_PROGRAM;
-  // Heuristics for popular terminals
-  if (term === "Apple_Terminal") return false; // macOS default profile is light
+  const termProgram = (term || "").toLowerCase();
+
+  // Known light-background terminals
+  if (term === "Apple_Terminal") {
+    // macOS default Terminal.app typically uses light background
+    return false;
+  }
+
+  // Known dark-background terminals
   if (
     term === "iTerm.app" ||
     term === "WezTerm" ||
     term === "Ghostty" ||
-    term === "vscode"
-  )
+    term === "vscode" ||
+    termProgram.includes("hyper") ||
+    termProgram.includes("warp")
+  ) {
     return true;
+  }
 
-  // Fallback: prefer dark (most dev terminals default dark), but allow override via env above
-  return true;
+  // Check TERM environment variable for additional hints
+  const termEnv = (process.env.TERM || "").toLowerCase();
+  if (termEnv.includes("256color") || termEnv.includes("24bit")) {
+    // Modern terminals with 256 colors typically default to dark
+    // But this is a weak signal, so we'll still fall back to light
+  }
+
+  // IMPORTANT: Fallback to LIGHT background assumption
+  // This is safer because dark text on light is more readable
+  // than light/colored text on potentially-dark backgrounds
+  // Users can always override with ITERABLE_UI_THEME=dark
+  return false;
 }
 
 export function showIterableLogo(version: string): void {
@@ -348,7 +380,7 @@ export function showSection(title: string, icon?: string): void {
   const displayTitle = icon && showIcons ? `${icon}  ${title}` : title;
   const dark = isDarkBackground();
   const titleHex = dark ? THEME.purpleBright : THEME.primary;
-  const lineHex = dark ? THEME.neutralLighter : THEME.neutralDark;
+  const lineHex = dark ? "#E5E7EB" : "#374151"; // gray-200 on dark, gray-700 on light
   console.log(chalk.bold.hex(titleHex)(displayTitle));
   console.log(
     chalk.hex(lineHex)("─".repeat(Math.min(displayTitle.length + 2, 60)))
@@ -366,7 +398,8 @@ export function showCompletion(
   console.log();
   console.log(chalk.bold.hex(THEME.success)(title));
   console.log(
-    chalk.hex(isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark)(
+    chalk.hex(isDarkBackground() ? "#E5E7EB" : "#374151")(
+      // gray-200 on dark, gray-700 on light
       "─".repeat(50)
     )
   );
@@ -388,7 +421,7 @@ export function showCompletion(
     console.log(chalk.bold.hex(THEME.accent)("Pro Tips"));
     console.log();
     const muted = chalk.hex(
-      isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark
+      isDarkBackground() ? "#E5E7EB" : "#374151" // gray-200 on dark, gray-700 on light
     );
     tips.forEach((tip) => {
       console.log(muted(`  • ${tip}`));
@@ -410,8 +443,11 @@ export function formatKeyValue(
   value: string,
   color = chalk.white
 ): string {
+  // Use brighter colors on dark backgrounds for better contrast
+  // On dark: use bright gray (#E5E7EB = gray-200)
+  // On light: use darker gray for contrast
   const muted = chalk.hex(
-    isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark
+    isDarkBackground() ? "#E5E7EB" : "#374151" // gray-200 on dark, gray-700 on light
   );
   return `  ${muted(key + ":")} ${color(value)}`;
 }
@@ -422,7 +458,8 @@ export function formatKeyValue(
 export function showDivider(style: "light" | "heavy" = "light"): void {
   const char = style === "light" ? "─" : "═";
   console.log(
-    chalk.hex(isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark)(
+    chalk.hex(isDarkBackground() ? "#E5E7EB" : "#374151")(
+      // gray-200 on dark, gray-700 on light
       char.repeat(60)
     )
   );
@@ -456,8 +493,9 @@ export function formatKeychainChoiceLabel(
   const activeBadge = isActive ? chalk.bgGreen.black(" ACTIVE ") + " " : "  ";
   const flags = env
     ? (() => {
+        // Use brighter muted color on dark backgrounds for better visibility
         const muted = chalk.hex(
-          isDarkBackground() ? THEME.neutralLighter : THEME.neutral
+          isDarkBackground() ? "#E5E7EB" : "#6B7280" // gray-200 on dark, gray-500 on light
         );
         const on = (s: string) => chalk.green(s);
         const off = (s: string) => chalk.gray(s);
