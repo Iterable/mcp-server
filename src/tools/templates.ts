@@ -35,8 +35,6 @@ interface TemplateTypeConfig {
   updateMethodName: keyof IterableClient;
   proofMethodName: keyof IterableClient;
   previewMethodName?: keyof IterableClient; // Only email and inapp support preview
-  // Special handling for parameter differences
-  getParamsTransform?: (params: z.infer<typeof GetTemplateParamsSchema>) => any;
 }
 
 const TEMPLATE_TYPES: TemplateTypeConfig[] = [
@@ -50,7 +48,6 @@ const TEMPLATE_TYPES: TemplateTypeConfig[] = [
     updateMethodName: "updateEmailTemplate",
     proofMethodName: "sendEmailTemplateProof",
     previewMethodName: "previewEmailTemplate",
-    getParamsTransform: (params) => params.templateId, // Email uses just templateId
   },
   {
     type: "sms",
@@ -94,12 +91,7 @@ function createTemplateToolsForType(
       name: `get_${config.type}_template`,
       description: `Get details for specific ${config.displayName} template by ID`,
       schema: GetTemplateParamsSchema,
-      execute: (params) => {
-        const methodParams = config.getParamsTransform
-          ? config.getParamsTransform(params)
-          : params;
-        return (client as any)[config.getMethodName](methodParams);
-      },
+      execute: (params) => (client as any)[config.getMethodName](params),
     }),
     createTool({
       name: `upsert_${config.type}_template`,
