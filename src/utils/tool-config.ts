@@ -40,7 +40,6 @@ export function getClaudeDesktopConfigPath(): string {
 }
 
 export type IterableMcpConfig = {
-  type: "stdio";
   command: string;
   args: string[];
   env: Record<string, string>;
