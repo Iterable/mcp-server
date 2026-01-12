@@ -58,7 +58,6 @@ describe("MCP Server Setup Configuration", () => {
   describe("MCP Config JSON Structure", () => {
     it("should have required stdio config fields", () => {
       const mcpConfig = {
-        type: "stdio" as const,
         command: "/path/to/node",
         args: ["-y", "@iterable/mcp"],
         env: {
@@ -68,7 +67,6 @@ describe("MCP Server Setup Configuration", () => {
         },
       };
 
-      expect(mcpConfig.type).toBe("stdio");
       expect(mcpConfig.command).toBeTruthy();
       expect(Array.isArray(mcpConfig.args)).toBe(true);
       // API keys are stored via KeyManager, not in config env
@@ -126,7 +124,6 @@ describe("MCP Server Setup Configuration", () => {
         mcpServers: {
           ...existingConfig.mcpServers,
           iterable: {
-            type: "stdio" as const,
             command: "node",
             args: [],
             env: {},
@@ -155,7 +152,6 @@ describe("MCP Server Setup Configuration", () => {
         mcpServers: {
           ...existingConfig.mcpServers,
           iterable: {
-            type: "stdio" as const,
             command: "new-command",
             args: ["new-arg"],
             env: { NEW_KEY: "new-value" },
@@ -173,7 +169,6 @@ describe("MCP Server Setup Configuration", () => {
   describe("Claude Code JSON Command", () => {
     it("should generate valid JSON for claude mcp add-json", () => {
       const mcpConfig = {
-        type: "stdio" as const,
         command: "npx",
         args: ["-y", "@iterable/mcp"],
         env: {
@@ -185,7 +180,6 @@ describe("MCP Server Setup Configuration", () => {
       const jsonString = JSON.stringify(mcpConfig);
       const parsed = JSON.parse(jsonString);
 
-      expect(parsed.type).toBe("stdio");
       expect(parsed.command).toBe("npx");
       expect(parsed.args).toEqual(["-y", "@iterable/mcp"]);
       expect(parsed.env).toHaveProperty("ITERABLE_USER_PII");
@@ -193,7 +187,6 @@ describe("MCP Server Setup Configuration", () => {
 
     it("should escape special characters in JSON", () => {
       const configWithSpecialChars = {
-        type: "stdio" as const,
         command: "node",
         args: ["/path/to/file"],
         env: {
@@ -217,7 +210,6 @@ describe("MCP Server Setup Configuration", () => {
   describe("Configuration Consistency", () => {
     it("should generate same config structure for all tools", () => {
       const baseConfig = {
-        type: "stdio" as const,
         command: "npx",
         args: ["-y", "@iterable/mcp"],
         env: {
@@ -360,7 +352,8 @@ describe("MCP Server Setup Configuration", () => {
           env: mockEnv,
         });
 
-        expect(config).toHaveProperty("type", "stdio");
+        // Note: type field is omitted for compatibility with Gemini CLI and others
+        expect(config).not.toHaveProperty("type");
         expect(config).toHaveProperty("command");
         expect(config).toHaveProperty("args");
         expect(config).toHaveProperty("env");
@@ -392,7 +385,6 @@ describe("MCP Server Setup Configuration", () => {
 
       // Should be parseable
       const parsed = JSON.parse(json);
-      expect(parsed.type).toBe("stdio");
       expect(parsed.command).toBe(config.command);
       expect(parsed.args).toEqual(config.args);
       expect(parsed.env).toEqual(config.env);

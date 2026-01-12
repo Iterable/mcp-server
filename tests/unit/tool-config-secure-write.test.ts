@@ -13,7 +13,6 @@ describe("tool-config secure writes", () => {
     const filePath = path.join(tmpDir, "config.json");
 
     const iterableConfig = {
-      type: "stdio" as const,
       command: "node",
       args: ["/dev/null"],
       env: { ITERABLE_USER_PII: "false" },

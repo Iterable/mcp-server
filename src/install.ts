@@ -128,7 +128,6 @@ export const buildMcpConfig = (options: {
   const packageName = NPX_PACKAGE_NAME + (options.autoUpdate ? "@latest" : "");
 
   return {
-    type: "stdio" as const,
     command: isLocal ? nodePath : npxPath,
     args: isLocal
       ? [path.resolve(process.cwd(), "dist", "index.js")]
@@ -690,11 +689,10 @@ export const setupMcpServer = async (): Promise<void> => {
       showSection("Manual Configuration", icons.rocket);
       console.log();
 
-      const { type, command, args, env } = iterableMcpConfig;
+      const { command, args, env } = iterableMcpConfig;
 
       showInfo("Add the MCP server to your AI tool with these settings:");
       console.log();
-      console.log(chalk.white.bold("  Type:") + `     ${type}`);
       console.log(chalk.white.bold("  Command:") + `  ${command}`);
       console.log(chalk.white.bold("  Args:") + `     ${args.join(" ")}`);
       const envEntries = Object.entries(env);
