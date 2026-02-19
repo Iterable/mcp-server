@@ -630,7 +630,7 @@ describe("MCP Protocol Integration Tests", () => {
           jsonrpc: "2.0",
           id: 103,
           method: "tools/call",
-          params: { name: "get_templates", arguments: { limit: 1 } },
+          params: { name: "get_templates", arguments: { pageSize: 1 } },
         },
       ];
 

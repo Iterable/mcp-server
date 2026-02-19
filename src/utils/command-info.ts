@@ -23,7 +23,10 @@ export const COMMAND_NAME = isNpx
 export const KEYS_COMMAND_TABLE: Array<[string, string]> = [
   [`${COMMAND_NAME} keys list`, "View all stored API keys"],
   [`${COMMAND_NAME} keys add`, "Add a new API key"],
-  [`${COMMAND_NAME} keys update <name-or-id>`, "Update an existing key (use --advanced to modify permissions)"],
+  [
+    `${COMMAND_NAME} keys update <name-or-id>`,
+    "Update an existing key (use --advanced to modify permissions)",
+  ],
   [`${COMMAND_NAME} keys activate <name-or-id>`, "Switch to a different key"],
   [`${COMMAND_NAME} keys delete <name-or-id>`, "Remove a key by ID or name"],
 ];
