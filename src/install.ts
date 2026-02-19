@@ -501,7 +501,7 @@ export const setupMcpServer = async (): Promise<void> => {
       });
       console.log();
       showInfo(
-        `To modify permissions, run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}"`)}`
+        `To modify permissions, run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}" --advanced`)}`
       );
     } else {
       const keyManager = getKeyManager();
