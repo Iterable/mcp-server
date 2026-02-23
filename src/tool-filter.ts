@@ -117,7 +117,7 @@ export const SEND_TOOLS: Set<string> = new Set([
   "send_campaign",
   "trigger_campaign",
   "schedule_campaign",
-  // Creating a blast campaign can send immediately if sendAt not provided
+  // Creating a blast campaign schedules a send (sendAt is required when listIds is provided)
   "create_campaign",
   // Triggered campaigns can cause sends upon activation; block unless explicitly allowed
   "activate_triggered_campaign",

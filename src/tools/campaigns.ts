@@ -47,7 +47,7 @@ export function createCampaignTools(client: IterableClient): Tool[] {
     createTool({
       name: "create_campaign",
       description:
-        "Create a new blast or triggered campaign from an existing template. If listIds are provided, the campaign will be a blast campaign, otherwise it will be a triggered campaign. Blast campaigns will be sent immediately if sendAt is not provided.",
+        "Create a new blast or triggered campaign from an existing template. If listIds are provided, the campaign will be a blast campaign; it is created in Ready state and will be sent at the given sendAt time, which is required. If listIds are not provided, the campaign will be a triggered campaign in Ready state that must be activated before it can send.",
       schema: CreateCampaignParamsSchema,
       execute: (params) => client.createCampaign(params),
     }),
