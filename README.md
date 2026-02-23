@@ -45,16 +45,15 @@ npx @iterable/mcp setup --advanced
 ```
 
 What you’ll choose (optional):
-- Enable access to user PII (`ITERABLE_USER_PII`)
-- Enable writes (create/update/delete actions) (`ITERABLE_ENABLE_WRITES`)
-- Enable sends (campaigns/journeys/events) (`ITERABLE_ENABLE_SENDS`) — requires writes
+- **User PII** (`ITERABLE_USER_PII`): access user profile data, including email addresses, phone numbers, and custom data fields.
+- **Writes** (`ITERABLE_ENABLE_WRITES`): create, update, and delete resources such as templates, lists, catalogs, campaigns, snippets, and user profiles.
+- **Sends** (`ITERABLE_ENABLE_SENDS`): send messages (email, SMS, push, in-app, WhatsApp), trigger campaigns and journeys, schedule and abort campaigns, and track events. Requires writes to be enabled. *Note: creating a blast campaign will schedule it for delivery, matching the behavior of the underlying Iterable API; there is no way to create a draft campaign. If you only need to draft content, you can do so with sends disabled by working with templates instead.*
 
-Safety notes:
-- Enabling sends requires writes to be enabled.
-- Permission settings are saved per key (see key management section below).
-- Prompts are generated from read‑only tools for extra safety.
+**IMPORTANT: Enabling writes and sends allows the AI agent to take real, potentially irreversible actions against your Iterable project, including sending messages to real users and deleting data. If you do not have the technical knowledge to properly review the agent's tool calls before they are executed, you should avoid enabling these flags, especially in production environments. It is entirely your choice to accept this risk. If you enable these capabilities, it is your responsibility to carefully review each action before allowing the agent to proceed.**
 
-## Prefer a global install?
+Note that permission settings are saved per key (see key management section below), allowing you to enable different permissions for different projects, e.g. only enable writes and sends for a sandbox project and disable them in production.
+
+### Prefer a global install?
 
 ```bash
 pnpm add -g @iterable/mcp
