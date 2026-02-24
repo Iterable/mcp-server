@@ -28,7 +28,7 @@ describe("SEND_TOOLS registry", () => {
       "send_campaign",
       "trigger_campaign",
       "schedule_campaign",
-      "create_campaign",
+      "create_and_schedule_campaign",
       "activate_triggered_campaign",
       "trigger_journey",
       "track_event",

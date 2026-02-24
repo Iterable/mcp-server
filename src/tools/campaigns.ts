@@ -8,7 +8,8 @@ import {
   ActivateTriggeredCampaignParamsSchema,
   ArchiveCampaignsParamsSchema,
   CancelCampaignParamsSchema,
-  CreateCampaignParamsSchema,
+  CreateAndScheduleCampaignParamsSchema,
+  CreateTriggeredCampaignParamsSchema,
   DeactivateTriggeredCampaignParamsSchema,
   GetCampaignMetricsParamsSchema,
   GetCampaignParamsSchema,
@@ -45,11 +46,18 @@ export function createCampaignTools(client: IterableClient): Tool[] {
       execute: (params) => client.getCampaignMetrics(params),
     }),
     createTool({
-      name: "create_campaign",
+      name: "create_and_schedule_campaign",
       description:
-        "Create a new blast or triggered campaign from an existing template. If listIds are provided, the campaign will be a blast campaign; it is created in Scheduled state and will be sent at the given sendAt time, which is required. If listIds are not provided, the campaign will be a triggered campaign in Ready state that must be activated before it can send.",
-      schema: CreateCampaignParamsSchema,
-      execute: (params) => client.createCampaign(params),
+        "Create a new blast campaign from an existing template and schedule it for delivery. The campaign is created in Scheduled state and will be sent to the specified lists at the given sendAt time.",
+      schema: CreateAndScheduleCampaignParamsSchema,
+      execute: (params) => client.createAndScheduleCampaign(params),
+    }),
+    createTool({
+      name: "create_triggered_campaign",
+      description:
+        "Create a new triggered campaign from an existing template. The campaign is created in Ready state and must be activated before it can send.",
+      schema: CreateTriggeredCampaignParamsSchema,
+      execute: (params) => client.createTriggeredCampaign(params),
     }),
     createTool({
       name: "get_child_campaigns",
