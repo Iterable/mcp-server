@@ -44,7 +44,7 @@ By default, the setup wizard configures the server in a safe, read‑only mode (
 npx @iterable/mcp setup --advanced
 ```
 
-What you’ll choose (optional):
+What you'll choose (optional):
 - **User PII** (`ITERABLE_USER_PII`): access user profile data, including email addresses, phone numbers, and custom data fields.
 - **Writes** (`ITERABLE_ENABLE_WRITES`): create, update, and delete resources such as templates, lists, catalogs, campaigns, snippets, and user profiles.
 - **Sends** (`ITERABLE_ENABLE_SENDS`): send messages (email, SMS, push, in-app, WhatsApp), trigger campaigns and journeys, schedule and abort campaigns, and track events. Requires writes to be enabled. *Note: creating a blast campaign will schedule it for delivery, matching the behavior of the underlying Iterable API; there is no way to create a draft campaign. If you only need to draft content, you can do so with sends disabled by working with templates instead.*
@@ -53,7 +53,59 @@ What you’ll choose (optional):
 
 Note that permission settings are saved per key (see key management section below), allowing you to enable different permissions for different projects, e.g. only enable writes and sends for a sandbox project and disable them in production.
 
+## What you can do
+
+See [TOOLS.md](TOOLS.md) for all available tools with descriptions. All tools map directly to [Iterable API endpoints](https://api.iterable.com/api/docs).
+
+Try these prompts:
+- *"Get details on campaign 12345"*
+- *"What email templates are available?"*
+- *"Show me all my product catalogs"*
+- *"What journeys are currently active?"*
+- *"Show me events for user@example.com from the last 30 days"*
+- *"Create a campaign called 'Holiday Sale' using template 456"*
+- *"Export all user data from January 2024"*
+- *"List users in my 'VIP Customers' list"*
+
+## API Key Management
+
+**Key Storage:**
+
+API keys are stored in the `~/.iterable-mcp/keys.json` file and managed via the `npx @iterable/mcp keys` commands. On macOS the actual API key values are stored in the system Keychain. On Windows, API key values are encrypted using the Windows Data Protection API (DPAPI). On Linux, the API key values are stored directly in the file with restricted permissions (0o600).
+
+Each key is tied to its API endpoint (US, EU, or custom) and to its permissions (view PII, write operations, send messages).
+
+**How Key Selection Works:**
+- You can store multiple API keys with different names (e.g., "production", "staging", "dev")
+- Only ONE key is marked as **active** at a time
+- The MCP server automatically uses whichever key is currently active
+- Your first key is automatically set as active
+- Switch between keys using the `activate` command
+
+```bash
+# List stored keys (shows which one is active with ● ACTIVE badge)
+npx @iterable/mcp keys list
+
+# Add a new key (interactive: prompts for name, region/endpoint, and API key)
+# Your first key becomes active automatically
+npx @iterable/mcp keys add
+
+# Switch to a different key by name or ID (also switches endpoint)
+npx @iterable/mcp keys activate production
+npx @iterable/mcp keys activate staging
+
+# Delete a key by ID (requires ID for safety)
+# Note: Cannot delete the currently active key - activate another first
+npx @iterable/mcp keys delete <key-id>
+
+# To update a key: delete the old one and add a new one with the same name
+```
+
+## Advanced setup
+
 ### Prefer a global install?
+
+If you'd rather not use `npx`, you can install globally. This lets you use `iterable-mcp` as a shorthand for `npx @iterable/mcp`.
 
 ```bash
 pnpm add -g @iterable/mcp
@@ -62,16 +114,6 @@ iterable-mcp setup
 
 **Note:** The setup command automatically configures the correct command path.
 
-Throughout this guide, commands are shown as `iterable-mcp` for brevity. If not globally installed, use `npx @iterable/mcp` instead (e.g., `npx @iterable/mcp keys list`).
-
-### Install from source
-
-```bash
-git clone https://github.com/iterable/mcp-server.git
-cd mcp-server
-pnpm install-dev:cursor  # or install-dev:claude-desktop, install-dev:claude-code, or install-dev:gemini-cli
-```
-
 ### Claude Code
 
 The `setup --claude-code` command automatically configures Claude Code by running `claude mcp add` for you.
@@ -79,8 +121,8 @@ The `setup --claude-code` command automatically configures Claude Code by runnin
 Alternatively, you can configure it manually:
 
 ```bash
-# Add your API key first (see API Key Management section below)
-iterable-mcp keys add
+# Add your API key first (see API Key Management section above)
+npx @iterable/mcp keys add
 
 # Then configure Claude Code
 claude mcp add iterable -- npx -y @iterable/mcp
@@ -119,7 +161,7 @@ All five use the same configuration format:
 **Recommended: Using key manager:**
 ```bash
 # First, add your API key (interactive prompts)
-iterable-mcp keys add
+npx @iterable/mcp keys add
 ```
 
 Then edit your config file:
@@ -180,59 +222,9 @@ Alternatively, you can manually edit your configuration file (after adding your 
 
 No `env` section is needed if using the key manager.
 
-## What you can do
-
-See [TOOLS.md](TOOLS.md) for all available tools with descriptions. All tools map directly to [Iterable API endpoints](https://api.iterable.com/api/docs).
-
-Try these prompts:
-- *"How many campaigns do I have running?"*
-- *"Get details on campaign 12345"*
-- *"Show me events for user@example.com from the last 30 days"*
-- *"Create a campaign called 'Holiday Sale' using template 456"*
-- *"What email templates are available?"*
-- *"Export all user data from January 2024"*
-- *"List users in my 'VIP Customers' list"*
-- *"Show me all my product catalogs"*
-- *"What journeys are currently active?"*
-- *"Send a welcome email to new-user@company.com"*
-
-## Configuration & security
-
-### API Key Management
-
-**Key Storage:**
-
-API keys are stored in the `~/.iterable-mcp/keys.json` file and managed via the `iterable-mcp keys` commands. On macOS the actual API key values are stored in the system Keychain. On Linux, the API key values are stored directly in the file with restricted permissions (0o600). On Windows, the file is protected by default NTFS home directory permissions.
-
-Each key is tied to its API endpoint (US, EU, or custom) and to its permissions (view PII, write operations, send messages).
-
-**How Key Selection Works:**
-- You can store multiple API keys with different names (e.g., "production", "staging", "dev")
-- Only ONE key is marked as **active** at a time
-- The MCP server automatically uses whichever key is currently active
-- Your first key is automatically set as active
-- Switch between keys using the `activate` command
-
-```bash
-# List stored keys (shows which one is active with ● ACTIVE badge)
-iterable-mcp keys list
-
-# Add a new key (interactive: prompts for name, region/endpoint, and API key)
-# Your first key becomes active automatically
-iterable-mcp keys add
-
-# Switch to a different key by name or ID (also switches endpoint)
-iterable-mcp keys activate production
-iterable-mcp keys activate staging
-
-# Delete a key by ID (requires ID for safety)
-# Note: Cannot delete the currently active key - activate another first
-iterable-mcp keys delete <key-id>
-
-# To update a key: delete the old one and add a new one with the same name
-```
-
 ### Environment variables
+
+The setup wizard and key manager handle most of these automatically. Setting environment variables directly is useful for CI/CD pipelines, Docker containers, or other non-interactive environments where the key manager isn't available. When both are present, key manager settings take precedence over environment variables.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -252,70 +244,9 @@ iterable-mcp keys delete <key-id>
   - Not allowed: plain `http://` on non-local hosts (use `https://` instead)
 - When a non-`*.iterable.com` domain is provided, the CLI will ask for confirmation.
 
-## Development
-
-### Running tests
-
-The project includes both unit and integration tests:
-
-```bash
-# Run all tests
-pnpm test
-
-# Run only unit tests (no API key required)
-pnpm test:unit
-
-# Run only integration tests (requires valid API key)
-pnpm test:integration
-```
-
-### Integration tests
-
-Integration tests make real API calls to Iterable and require a valid API key.
-
-**Setup:**
-
-1. Set your API key as an environment variable:
-   ```bash
-   export ITERABLE_API_KEY=your_actual_api_key
-   ```
-
-2. Or add a key to key manager (interactive):
-   ```bash
-   iterable-mcp keys add
-   ```
-
-   **Note:** The key name can be anything (e.g., "dev", "test", "staging"). The system automatically uses whichever key is marked as **active**. Your first key is automatically set as active. If you have multiple keys, use `iterable-mcp keys activate <name>` to switch between them.
-
-3. Run the integration tests:
-   ```bash
-   pnpm test:integration
-   ```
-
-**Note:** Integration tests require a valid API key (env var or active key manager key). The suite fails fast if none is found.
-
-### Development workflow
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build the project
-pnpm build
-
-# Build and watch for changes
-pnpm build:watch
-
-# Run in development mode
-pnpm dev
-
-# Install locally for testing
-pnpm run install-dev
-```
-
 ## Troubleshooting
 
-- Claude CLI missing: install `claude` CLI, then re-run `iterable-mcp setup --claude-code`.
+- Claude CLI missing: install `claude` CLI, then re-run `npx @iterable/mcp setup --claude-code`.
 - macOS Keychain issues: Ensure Keychain is accessible and re-run setup if needed.
 
 ### Client-specific limitations
@@ -332,12 +263,12 @@ pnpm run install-dev
 
 You can configure permissions when adding a key:
 ```bash
-iterable-mcp keys add --advanced
+npx @iterable/mcp keys add --advanced
 ```
 
 Or update an existing key's permissions:
 ```bash
-iterable-mcp keys update <key-name> --advanced
+npx @iterable/mcp keys update <key-name> --advanced
 ```
 
 **Process persistence:** After switching API keys with `keys activate`, you must **fully restart Windsurf** (quit and reopen the application). Windsurf keeps MCP server processes running in the background, and they don't automatically reload when you switch keys.
@@ -354,13 +285,17 @@ iterable-mcp keys update <key-name> --advanced
 
 You can configure permissions when adding a key:
 ```bash
-iterable-mcp keys add --advanced
+npx @iterable/mcp keys add --advanced
 ```
 
 Or update an existing key's permissions:
 ```bash
-iterable-mcp keys update <key-name> --advanced
+npx @iterable/mcp keys update <key-name> --advanced
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, building from source, and running tests.
 
 ## Beta Feature Reminder
 Iterable's MCP server is currently in beta. MCP functionality may change, be
@@ -370,4 +305,4 @@ more information, refer to [Iterable Beta Terms](https://iterable.com/trust/beta
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.

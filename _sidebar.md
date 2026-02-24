@@ -1,2 +1,4 @@
 - [Home](/)
 - [Available Tools](TOOLS.md)
+- [Contributing](CONTRIBUTING.md)
+- [License](LICENSE.md)
