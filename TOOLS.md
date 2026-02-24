@@ -1,4 +1,4 @@
-# Available Iterable MCP Tools (104 tools)
+# Available Iterable MCP Tools (105 tools)
 
 **Legend:**
 - 🔒 = Requires enabling user PII access
@@ -6,12 +6,13 @@
 - ✉️ = Requires enabling sends
 
 
-## Campaigns (13 tools)
+## Campaigns (14 tools)
 - **abort_campaign** ✏️: Abort a campaign that is currently running
 - **activate_triggered_campaign** ✏️✉️: Activate a triggered campaign (requires API triggered campaign activation enabled)
 - **archive_campaigns** ✏️: Archive one or more campaigns. Scheduled/recurring campaigns will be cancelled, running campaigns will be aborted.
 - **cancel_campaign** ✏️: Cancel a scheduled or recurring campaign
-- **create_campaign** ✏️✉️: Create a new blast or triggered campaign from an existing template. If listIds are provided, the campaign will be a blast campaign; it is created in Scheduled state and will be sent at the given sendAt time, which is required. If listIds are not provided, the campaign will be a triggered campaign in Ready state that must be activated before it can send.
+- **create_and_schedule_campaign** ✏️✉️: Create a new blast campaign from an existing template and schedule it for delivery. The campaign is created in Scheduled state and will be sent to the specified lists at the given sendAt time.
+- **create_triggered_campaign** ✏️: Create a new triggered campaign from an existing template. The campaign is created in Ready state and must be activated before it can send.
 - **deactivate_triggered_campaign** ✏️: Deactivate a triggered campaign (requires API triggered campaign deactivation enabled)
 - **get_campaign**: Get detailed information about a specific campaign
 - **get_campaign_metrics**: Get campaign performance metrics
