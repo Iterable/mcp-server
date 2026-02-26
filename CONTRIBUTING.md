@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to the Iterable MCP Server! We welcome bug reports, feature requests, and pull requests. If you find a bug or have an idea, please [open an issue](https://github.com/Iterable/mcp-server/issues).
+Thanks for your interest in contributing to the Iterable MCP Server! We welcome bug reports, feature requests, and [pull requests](https://github.com/Iterable/mcp-server/pulls). If you find a bug or have an idea, please [open an issue](https://github.com/Iterable/mcp-server/issues).
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ Thanks for your interest in contributing to the Iterable MCP Server! We welcome 
 To test changes locally, clone the repo and use one of the `install-dev` scripts. This builds the project and links it as a local MCP server in your AI client, so you can test your changes without publishing to npm.
 
 ```bash
-git clone https://github.com/iterable/mcp-server.git
+git clone https://github.com/Iterable/mcp-server.git
 cd mcp-server
 pnpm install-dev:cursor  # or install-dev:claude-desktop, install-dev:claude-code, install-dev:gemini-cli, install-dev:windsurf, install-dev:antigravity
 ```
@@ -25,7 +25,7 @@ pnpm install-dev:cursor:debug
 
 ## Project structure
 
-MCP tools live in `src/tools/`, one file per domain (campaigns, templates, catalogs, etc.). Each file exports a creator function that returns an array of MCP `Tool` definitions. These are registered in `src/tools/index.ts` via the `TOOL_CREATORS_BY_CATEGORY` array — adding a tool to the appropriate domain file is all that's needed for it to be picked up.
+MCP tools live in `src/tools/`, one file per domain (campaigns, templates, catalogs, etc.). Each file exports a creator function that returns an array of MCP `Tool` definitions. These are registered in `src/tools/index.ts` via the `TOOL_CREATORS_BY_CATEGORY` array, so adding a tool to the appropriate domain file is all that's needed for it to be picked up.
 
 Tool visibility is controlled by `src/tool-filter.ts`, which uses safe-lists to gate tools based on the `ITERABLE_USER_PII`, `ITERABLE_ENABLE_WRITES`, and `ITERABLE_ENABLE_SENDS` permission flags.
 

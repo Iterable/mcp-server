@@ -1,4 +1,5 @@
 - [Home](/)
 - [Available Tools](TOOLS.md)
 - [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
 - [License](LICENSE.md)

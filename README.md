@@ -55,7 +55,7 @@ Note that permission settings are saved per key (see key management section belo
 
 ## What you can do
 
-See [TOOLS.md](TOOLS.md) for all available tools with descriptions. All tools map directly to [Iterable API endpoints](https://api.iterable.com/api/docs).
+See the [available tools](TOOLS.md) for all tools with descriptions. All tools map directly to [Iterable API endpoints](https://api.iterable.com/api/docs).
 
 Try these prompts:
 - *"Get details on campaign 12345"*
@@ -94,11 +94,12 @@ npx @iterable/mcp keys add
 npx @iterable/mcp keys activate production
 npx @iterable/mcp keys activate staging
 
+# Update an existing key (interactive: prompts for new values)
+npx @iterable/mcp keys update <name-or-id>
+
 # Delete a key by ID (requires ID for safety)
 # Note: Cannot delete the currently active key - activate another first
 npx @iterable/mcp keys delete <key-id>
-
-# To update a key: delete the old one and add a new one with the same name
 ```
 
 ## Advanced setup
@@ -129,12 +130,6 @@ claude mcp add iterable -- npx -y @iterable/mcp
 
 # Verify it was added
 claude mcp list
-
-# Optional: Configure privacy settings
-claude mcp add iterable \
-  --env ITERABLE_USER_PII=false \
-  --env ITERABLE_ENABLE_WRITES=false \
-  -- npx -y @iterable/mcp
 ```
 
 If you have already configured Claude Desktop successfully, you can run this command to copy your MCP server settings to Claude Code:
@@ -224,17 +219,17 @@ No `env` section is needed if using the key manager.
 
 ### Environment variables
 
-The setup wizard and key manager handle most of these automatically. Setting environment variables directly is useful for CI/CD pipelines, Docker containers, or other non-interactive environments where the key manager isn't available. When both are present, key manager settings take precedence over environment variables.
+Variables marked as **managed** are automatically configured by the key manager. They take precedence over environment variables when both are present. Setting environment variables directly is useful for CI/CD pipelines, Docker containers, or other non-interactive environments where the key manager isn't available.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ITERABLE_API_KEY` | No* | Your Iterable API key (*Optional if using key manager, otherwise required) |
-| `ITERABLE_BASE_URL` | No** | Base URL for the Iterable API (**Not needed when using key manager - URL is stored with each key) |
-| `ITERABLE_DEBUG` | No | Set to `true` for API request logging |
-| `LOG_LEVEL` | No | Set to `debug` for troubleshooting |
-| `ITERABLE_USER_PII` | No | Set to `true` to enable tools that access user PII data (default: `false`) |
-| `ITERABLE_ENABLE_WRITES` | No | Set to `true` to enable tools that perform write operations (default: `false`) |
-| `ITERABLE_ENABLE_SENDS` | No | Set to `true` to enable tools that can send messages (default: `false`). Requires writes to be enabled |
+| Variable | Managed | Description |
+|----------|-------------|-------------|
+| `ITERABLE_API_KEY` | ✅ | Your Iterable API key. Required if not using key manager |
+| `ITERABLE_BASE_URL` | ✅ | Base URL for the Iterable API (default: `https://api.iterable.com`) |
+| `ITERABLE_USER_PII` | ✅ | Set to `true` to enable tools that access user PII data (default: `false`) |
+| `ITERABLE_ENABLE_WRITES` | ✅ | Set to `true` to enable tools that perform write operations (default: `false`) |
+| `ITERABLE_ENABLE_SENDS` | ✅ | Set to `true` to enable tools that can send messages (default: `false`). Requires writes to be enabled |
+| `ITERABLE_DEBUG` | | Set to `true` for API request logging |
+| `LOG_LEVEL` | | Set to `debug` for troubleshooting |
 
 ### Custom endpoints
 
@@ -253,13 +248,13 @@ The setup wizard and key manager handle most of these automatically. Setting env
 
 #### Windsurf (Codeium)
 
-**Tool limit:** Windsurf has a [maximum limit of 100 tools](https://docs.windsurf.com/windsurf/cascade/mcp) that Cascade can access at any given time. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **104 tools**, which exceeds this limit.
+**Tool limit:** Windsurf has a [maximum limit of 100 tools](https://docs.windsurf.com/windsurf/cascade/mcp) that Cascade can access at any given time. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **105 tools**, which exceeds this limit.
 
 **Workaround:** Use restricted permissions to stay under the 100-tool limit:
 - With default permissions (all disabled): 26 tools ✅
 - With PII only: 37 tools ✅
-- With PII + writes: 86 tools ✅
-- With all permissions: 104 tools ❌ (exceeds Windsurf limit)
+- With PII + writes: 87 tools ✅
+- With all permissions: 105 tools ❌ (exceeds Windsurf limit)
 
 You can configure permissions when adding a key:
 ```bash
@@ -275,13 +270,13 @@ npx @iterable/mcp keys update <key-name> --advanced
 
 #### Antigravity
 
-**Tool limit:** Antigravity has a maximum limit of 100 tools per MCP server. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **104 tools**, which exceeds this limit.
+**Tool limit:** Antigravity has a maximum limit of 100 tools per MCP server. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **105 tools**, which exceeds this limit.
 
 **Workaround:** Use restricted permissions to stay under the 100-tool limit:
 - With default permissions (all disabled): 26 tools ✅
 - With PII only: 37 tools ✅
-- With PII + writes: 86 tools ✅
-- With all permissions: 104 tools ❌ (exceeds Antigravity limit)
+- With PII + writes: 87 tools ✅
+- With all permissions: 105 tools ❌ (exceeds Antigravity limit)
 
 You can configure permissions when adding a key:
 ```bash
@@ -295,9 +290,14 @@ npx @iterable/mcp keys update <key-name> --advanced
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, building from source, and running tests.
+See the [contributing guidelines](CONTRIBUTING.md) for development setup, building from source, and running tests.
+
+## Security
+
+See the [security policy](SECURITY.md) for reporting vulnerabilities.
 
 ## Beta Feature Reminder
+
 Iterable's MCP server is currently in beta. MCP functionality may change, be
 suspended, or be discontinued at any time without notice. This software is
 provided "as is" and is open source and ready for you to experiment with. For
@@ -305,4 +305,4 @@ more information, refer to [Iterable Beta Terms](https://iterable.com/trust/beta
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+This project is licensed under the MIT License. See the [license](LICENSE.md) for details.
