@@ -39,9 +39,7 @@
     "minimumReleaseAgeExclude": [
       "@iterable/*"
     ],
-    "overrides": {
-      "@iterable/api": "link:../api-client"
-    }
+    "overrides": {}
   },
   "scripts": {
     "build": "pnpm lint:fix && tsc --project tsconfig.build.json && pnpm update-tools && chmod +x dist/index.js",
