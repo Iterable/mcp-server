@@ -46,7 +46,9 @@ const EXPECTED_TOOLS = [
   "get_child_campaigns",
   "get_email_template",
   "get_embedded_messages",
+  "get_experiment",
   "get_experiment_metrics",
+  "get_experiment_variants",
   "get_export_files",
   "get_export_jobs",
   "get_in_app_messages",
@@ -70,6 +72,7 @@ const EXPECTED_TOOLS = [
   "get_user_events_by_user_id",
   "get_user_fields",
   "get_webhooks",
+  "list_experiments",
   "partial_update_catalog_item",
   "preview_email_template",
   "preview_inapp_template",
@@ -171,9 +174,9 @@ describe("Tool Modules", () => {
     it("should have expected total number of tools", () => {
       const allTools = createAllTools(client);
 
-      // Should have a reasonable number of tools (at least 104, allowing for growth)
-      expect(allTools.length).toBeGreaterThanOrEqual(104);
-      expect(allTools.length).toBeLessThan(110); // Sanity check
+      // Should have a reasonable number of tools (at least 107, allowing for growth)
+      expect(allTools.length).toBeGreaterThanOrEqual(107);
+      expect(allTools.length).toBeLessThan(115); // Sanity check
     });
 
     it("should have tools from all categories", () => {
