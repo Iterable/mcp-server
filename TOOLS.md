@@ -1,4 +1,4 @@
-# Available Iterable MCP Tools (105 tools)
+# Available Iterable MCP Tools (108 tools)
 
 **Legend:**
 - 🔒 = Requires enabling user PII access
@@ -49,8 +49,11 @@
 - **track_bulk_events** 🔒✏️✉️: Track multiple events in a single request for better performance
 - **track_event** 🔒✏️✉️: Track a custom event for a user
 
-## Experiments (1 tools)
+## Experiments (4 tools)
+- **get_experiment**: Get detailed information about a specific experiment by ID, including variants summary and constraints
 - **get_experiment_metrics**: Get experiment metrics for A/B testing analysis (currently supports email experiments only)
+- **get_experiment_variants**: Get variant content for an experiment, including subject lines, preheaders, HTML source, and plain text
+- **list_experiments**: List experiments with optional filtering by campaign, status, and date range. Supports pagination.
 
 ## Journeys (2 tools)
 - **get_journeys**: Get journeys (workflows) with optional pagination and state filtering
