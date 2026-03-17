@@ -124,8 +124,6 @@ export const SEND_TOOLS: Set<string> = new Set([
   "send_campaign",
   "trigger_campaign",
   "schedule_campaign",
-  // Creating a blast campaign schedules a send
-  "create_blast_campaign",
   // Triggered campaigns can cause sends upon activation; block unless explicitly allowed
   "activate_triggered_campaign",
   // Journey triggers enqueue users which may send
