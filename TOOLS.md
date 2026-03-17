@@ -11,7 +11,7 @@
 - **activate_triggered_campaign** ✏️✉️: Activate a triggered campaign (requires API triggered campaign activation enabled)
 - **archive_campaigns** ✏️: Archive one or more campaigns. Scheduled/recurring campaigns will be cancelled, running campaigns will be aborted.
 - **cancel_campaign** ✏️: Cancel a scheduled or recurring campaign
-- **create_blast_campaign** ✏️✉️: Create a new blast campaign from an existing template. By default, the campaign is created without being scheduled. Set scheduleSend to true to immediately schedule it for delivery at the given sendAt time.
+- **create_blast_campaign** ✏️: Create a new blast campaign from an existing template. The campaign is created without being scheduled. Use schedule_campaign to schedule it for delivery.
 - **create_triggered_campaign** ✏️: Create a new triggered campaign from an existing template. The campaign is created in Ready state and must be activated before it can send.
 - **deactivate_triggered_campaign** ✏️: Deactivate a triggered campaign (requires API triggered campaign deactivation enabled)
 - **get_campaign**: Get detailed information about a specific campaign

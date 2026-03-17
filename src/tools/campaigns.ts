@@ -48,7 +48,7 @@ export function createCampaignTools(client: IterableClient): Tool[] {
     createTool({
       name: "create_blast_campaign",
       description:
-        "Create a new blast campaign from an existing template. By default, the campaign is created without being scheduled. Set scheduleSend to true to immediately schedule it for delivery at the given sendAt time.",
+        "Create a new blast campaign from an existing template. The campaign is created without being scheduled. Use schedule_campaign to schedule it for delivery.",
       schema: CreateBlastCampaignParamsSchema,
       execute: (params) => client.createBlastCampaign(params),
     }),

@@ -16,7 +16,6 @@ describe("filterTools with allowSends", () => {
       mkTool("send_campaign"),
       mkTool("trigger_campaign"),
       mkTool("schedule_campaign"),
-      mkTool("create_blast_campaign"),
       mkTool("track_event"),
       mkTool("track_bulk_events"),
       mkTool("trigger_journey"),
@@ -47,7 +46,6 @@ describe("filterTools with allowSends", () => {
     expect(names.has("send_campaign")).toBe(false);
     expect(names.has("trigger_campaign")).toBe(false);
     expect(names.has("schedule_campaign")).toBe(false);
-    expect(names.has("create_blast_campaign")).toBe(false);
     expect(names.has("track_event")).toBe(false);
     expect(names.has("track_bulk_events")).toBe(false);
     expect(names.has("trigger_journey")).toBe(false);
