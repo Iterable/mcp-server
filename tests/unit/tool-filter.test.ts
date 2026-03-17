@@ -145,7 +145,7 @@ describe("Tool Filter", () => {
       const filteredNames = filteredTools.map((tool) => tool.name);
 
       const writeTools = [
-        "create_and_schedule_campaign",
+        "create_blast_campaign",
         "create_triggered_campaign",
         "update_user",
         "delete_user_by_email",

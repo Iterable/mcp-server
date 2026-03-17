@@ -8,7 +8,7 @@ import {
   ActivateTriggeredCampaignParamsSchema,
   ArchiveCampaignsParamsSchema,
   CancelCampaignParamsSchema,
-  CreateAndScheduleCampaignParamsSchema,
+  CreateBlastCampaignParamsSchema,
   CreateTriggeredCampaignParamsSchema,
   DeactivateTriggeredCampaignParamsSchema,
   GetCampaignMetricsParamsSchema,
@@ -46,11 +46,11 @@ export function createCampaignTools(client: IterableClient): Tool[] {
       execute: (params) => client.getCampaignMetrics(params),
     }),
     createTool({
-      name: "create_and_schedule_campaign",
+      name: "create_blast_campaign",
       description:
-        "Create a new blast campaign from an existing template and schedule it for delivery. The campaign is created in Scheduled state and will be sent to the specified lists at the given sendAt time.",
-      schema: CreateAndScheduleCampaignParamsSchema,
-      execute: (params) => client.createAndScheduleCampaign(params),
+        "Create a new blast campaign from an existing template. By default, the campaign is created without being scheduled. Set scheduleSend to true to immediately schedule it for delivery at the given sendAt time.",
+      schema: CreateBlastCampaignParamsSchema,
+      execute: (params) => client.createBlastCampaign(params),
     }),
     createTool({
       name: "create_triggered_campaign",

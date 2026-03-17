@@ -21,7 +21,7 @@ const EXPECTED_TOOLS = [
   "cancel_sms",
   "cancel_web_push",
   "cancel_whatsapp",
-  "create_and_schedule_campaign",
+  "create_blast_campaign",
   "create_triggered_campaign",
   "create_catalog",
   "create_list",
