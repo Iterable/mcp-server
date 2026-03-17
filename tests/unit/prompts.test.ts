@@ -61,7 +61,7 @@ describe("MCP Prompts", () => {
       expect(promptNames).toContain("get-user-by-user-id");
       expect(promptNames).toContain("get-campaigns");
       expect(promptNames).toContain("get-experiment-metrics");
-      expect(promptNames).toContain("create-and-schedule-campaign");
+      expect(promptNames).toContain("create-blast-campaign");
       expect(promptNames).toContain("create-triggered-campaign");
       expect(promptNames).toContain("get-child-campaigns");
     });
@@ -132,7 +132,7 @@ describe("MCP Prompts", () => {
       expect(promptNames).toContain("get-campaigns");
 
       // Should NOT include write or send tools
-      expect(promptNames).not.toContain("create-and-schedule-campaign");
+      expect(promptNames).not.toContain("create-blast-campaign");
       expect(promptNames).not.toContain("update-user");
       expect(promptNames).not.toContain("send-email");
       expect(promptNames).not.toContain("send-email-template-proof");

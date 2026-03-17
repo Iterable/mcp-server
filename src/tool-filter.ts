@@ -13,7 +13,7 @@ export const NON_PII_TOOLS: Set<string> = new Set([
   "archive_campaigns",
   "bulk_delete_catalog_items",
   "cancel_campaign",
-  "create_and_schedule_campaign",
+  "create_blast_campaign",
   "create_triggered_campaign",
   "create_catalog",
   "create_list",
@@ -125,7 +125,7 @@ export const SEND_TOOLS: Set<string> = new Set([
   "trigger_campaign",
   "schedule_campaign",
   // Creating a blast campaign schedules a send
-  "create_and_schedule_campaign",
+  "create_blast_campaign",
   // Triggered campaigns can cause sends upon activation; block unless explicitly allowed
   "activate_triggered_campaign",
   // Journey triggers enqueue users which may send

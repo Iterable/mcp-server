@@ -10,7 +10,7 @@ describe("filterTools defaults", () => {
   } as any;
 
   const writeTool: any = {
-    name: "create_and_schedule_campaign", // NOT in READ_ONLY_TOOLS
+    name: "create_blast_campaign", // NOT in READ_ONLY_TOOLS
     description: "",
     inputSchema: { type: "object", properties: {} },
     handler: async () => ({}),
@@ -26,9 +26,7 @@ describe("filterTools defaults", () => {
       })
     );
     expect(out.map((t) => t.name)).toContain("get_campaigns");
-    expect(out.map((t) => t.name)).not.toContain(
-      "create_and_schedule_campaign"
-    );
+    expect(out.map((t) => t.name)).not.toContain("create_blast_campaign");
   });
 
   it("includes write tools when allowWrites=true", () => {
@@ -40,6 +38,6 @@ describe("filterTools defaults", () => {
         allowSends: true,
       })
     );
-    expect(out.map((t) => t.name)).toContain("create_and_schedule_campaign");
+    expect(out.map((t) => t.name)).toContain("create_blast_campaign");
   });
 });
