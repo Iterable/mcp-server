@@ -28,13 +28,13 @@ export function createUserTools(client: IterableClient): Tool[] {
       name: "get_user_by_email",
       description: "Get user profile information by email address",
       schema: GetUserByEmailParamsSchema,
-      execute: (params) => client.getUserByEmail(params.email),
+      execute: (params) => client.getUserByEmail(params),
     }),
     createTool({
       name: "get_user_by_user_id",
       description: "Get user profile information by user ID",
       schema: GetUserByIdParamsSchema,
-      execute: (params) => client.getUserByUserId(params.userId),
+      execute: (params) => client.getUserByUserId(params),
     }),
     createTool({
       name: "update_user",
@@ -48,14 +48,14 @@ export function createUserTools(client: IterableClient): Tool[] {
       description:
         "Delete a user by email address (asynchronous - does not prevent future data collection)",
       schema: DeleteUserByEmailParamsSchema,
-      execute: (params) => client.deleteUserByEmail(params.email),
+      execute: (params) => client.deleteUserByEmail(params),
     }),
     createTool({
       name: "delete_user_by_user_id",
       description:
         "Delete a user by user ID (asynchronous - does not prevent future data collection, deletes all users with same userId)",
       schema: DeleteUserByUserIdParamsSchema,
-      execute: (params) => client.deleteUserByUserId(params.userId),
+      execute: (params) => client.deleteUserByUserId(params),
     }),
     createTool({
       name: "update_email",
