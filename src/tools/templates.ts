@@ -140,14 +140,13 @@ export function createTemplateTools(client: IterableClient): Tool[] {
       name: "get_template_by_client_id",
       description: "Get template by client template ID",
       schema: GetTemplateByClientIdParamsSchema,
-      execute: (params) =>
-        client.getTemplateByClientId(params.clientTemplateId),
+      execute: (params) => client.getTemplateByClientId(params),
     }),
     createTool({
       name: "delete_templates",
       description: "Delete one or more templates by ID",
       schema: BulkDeleteTemplatesParamsSchema,
-      execute: (params) => client.deleteTemplates(params.ids),
+      execute: (params) => client.deleteTemplates(params),
     }),
 
     // Generate tools for all template types using configuration-driven approach

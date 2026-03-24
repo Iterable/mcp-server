@@ -48,7 +48,7 @@ export function createListTools(client: IterableClient): Tool[] {
       name: "delete_list",
       description: "Delete a user list",
       schema: DeleteListParamsSchema,
-      execute: (params) => client.deleteList(params.listId),
+      execute: (params) => client.deleteList(params),
     }),
     createTool({
       name: "unsubscribe_from_list",

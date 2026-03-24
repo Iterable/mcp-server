@@ -7,6 +7,7 @@ import {
   BulkDeleteCatalogItemsParamsSchema,
   CreateCatalogParamsSchema,
   DeleteCatalogItemParamsSchema,
+  DeleteCatalogParamsSchema,
   GetCatalogFieldMappingsParamsSchema,
   GetCatalogItemParamsSchema,
   GetCatalogItemsParamsSchema,
@@ -17,7 +18,6 @@ import {
   UpdateCatalogItemParamsSchema,
 } from "@iterable/api";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 
 import { createTool } from "../schema-utils.js";
 
@@ -27,7 +27,7 @@ export function createCatalogTools(client: IterableClient): Tool[] {
       name: "create_catalog",
       description: "Create a new catalog",
       schema: CreateCatalogParamsSchema,
-      execute: (params) => client.createCatalog(params.catalogName),
+      execute: (params) => client.createCatalog(params),
     }),
     createTool({
       name: "update_catalog_items",
@@ -39,15 +39,13 @@ export function createCatalogTools(client: IterableClient): Tool[] {
       name: "get_catalog_item",
       description: "Get a specific catalog item by ID",
       schema: GetCatalogItemParamsSchema,
-      execute: (params) =>
-        client.getCatalogItem(params.catalogName, params.itemId),
+      execute: (params) => client.getCatalogItem(params),
     }),
     createTool({
       name: "delete_catalog_item",
       description: "Delete a specific catalog item by ID",
       schema: DeleteCatalogItemParamsSchema,
-      execute: (params) =>
-        client.deleteCatalogItem(params.catalogName, params.itemId),
+      execute: (params) => client.deleteCatalogItem(params),
     }),
     createTool({
       name: "get_catalogs",
@@ -71,10 +69,8 @@ export function createCatalogTools(client: IterableClient): Tool[] {
     createTool({
       name: "delete_catalog",
       description: "Delete a catalog",
-      schema: z.object({
-        catalogName: z.string().describe("Name of the catalog to delete"),
-      }),
-      execute: (params) => client.deleteCatalog(params.catalogName),
+      schema: DeleteCatalogParamsSchema,
+      execute: (params) => client.deleteCatalog(params),
     }),
     createTool({
       name: "update_catalog_field_mappings",
