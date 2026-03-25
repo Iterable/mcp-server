@@ -8,8 +8,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "removeComments": false,
-    "importHelpers": false,
-    "downlevelIteration": true
+    "importHelpers": false
   },
   "include": [
     "src/**/*"
