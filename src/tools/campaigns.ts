@@ -41,7 +41,8 @@ export function createCampaignTools(client: IterableClient): Tool[] {
 
     createTool({
       name: "get_campaign_metrics",
-      description: "Get campaign performance metrics",
+      description:
+        "Get campaign performance metrics. Requires a date range. Always use the narrowest window possible for performance.",
       schema: GetCampaignMetricsParamsSchema,
       execute: (params) => client.getCampaignMetrics(params),
     }),

@@ -37,8 +37,10 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
-      - name: Update npm for OIDC support
-        run: npm install -g npm@latest # Needs 11.5.1+ for npm trusted publishing
+      - name: Install npm 11+ for OIDC provenance publishing
+        run: corepack enable npm && corepack install -g npm@latest
+        env:
+          COREPACK_ENABLE_STRICT: 0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -59,12 +61,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: version
         run: |
-          npm version ${{ github.event.inputs.version_type }}
+          pnpm version ${{ github.event.inputs.version_type }}
           echo "new_version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           git push --follow-tags
 
       - name: Publish to npm
         run: npm publish --provenance
+        env:
+          COREPACK_ENABLE_STRICT: 0
 
       - name: Create GitHub release (manual trigger only)
         if: github.event_name == 'workflow_dispatch'
