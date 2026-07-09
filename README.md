@@ -2,8 +2,6 @@
 
 [![npm version](https://img.shields.io/npm/v/@iterable/mcp.svg)](https://www.npmjs.com/package/@iterable/mcp)
 
-![Iterable MCP Server](images/iterable-mcp-server.png)
-
 Talk to your Iterable data using natural language. Ask questions or give instructions like *"How many campaigns did we send last week?"*, *"Show me my most recent templates"*, or *"Build me a beautiful email template that does the following..."* and get instant answers without writing code or navigating dashboards.
 
 **Supported AI clients:**
@@ -27,9 +25,6 @@ Talk to your Iterable data using natural language. Ask questions or give instruc
 ```bash
 npx @iterable/mcp setup
 ```
-
-![Iterable MCP Server Setup](images/iterable-mcp-server-setup.gif)
-
 
 To always use the latest version (auto-update on each restart), add `--auto-update`:
 
@@ -81,6 +76,7 @@ Each key is tied to its API endpoint (US, EU, or custom) and to its permissions 
 - The MCP server automatically uses whichever key is currently active
 - Your first key is automatically set as active
 - Switch between keys using the `activate` command
+- After `keys activate`, restart your AI client (or reload its MCP servers) so the Iterable MCP process picks up the new active key. Some clients may require fully quitting and reopening the application.
 
 ```bash
 # List stored keys (shows which one is active with ● ACTIVE badge)
@@ -88,19 +84,29 @@ npx @iterable/mcp keys list
 
 # Add a new key (interactive: prompts for name, region/endpoint, and API key)
 # Your first key becomes active automatically
+# Uses secure defaults: PII, writes, and sends disabled
 npx @iterable/mcp keys add
+
+# Add a key and choose permissions (PII / writes / sends) interactively
+npx @iterable/mcp keys add --advanced
 
 # Switch to a different key by name or ID (also switches endpoint)
 npx @iterable/mcp keys activate production
 npx @iterable/mcp keys activate staging
 
-# Update an existing key (interactive: prompts for new values)
+# Update an existing key (interactive: prompts for new name/endpoint/API key)
+# Without --advanced, existing permissions are left unchanged
 npx @iterable/mcp keys update <name-or-id>
+
+# Update a key and change its permissions (required to enable PII / writes / sends)
+npx @iterable/mcp keys update <name-or-id> --advanced
 
 # Delete a key by ID (requires ID for safety)
 # Note: Cannot delete the currently active key - activate another first
 npx @iterable/mcp keys delete <key-id>
 ```
+
+**Permissions:** By default, `keys add` and `keys update` do not prompt for elevated permissions. New keys get secure defaults (PII, writes, and sends disabled); updates keep the key's current permissions. Pass `--advanced` to choose User PII, Writes, and/or Sends for that key (same options and risks as [`setup --advanced`](#installation)).
 
 ## Advanced setup
 
@@ -230,6 +236,7 @@ Variables marked as **managed** are automatically configured by the key manager.
 | `ITERABLE_ENABLE_SENDS` | ✅ | Set to `true` to enable tools that can send messages (default: `false`). Requires writes to be enabled |
 | `ITERABLE_DEBUG` | | Set to `true` for API request logging |
 | `LOG_LEVEL` | | Set to `debug` for troubleshooting |
+| `ITERABLE_UI_THEME` | | Force terminal color theme: `dark` or `light` (auto-detected by default) |
 
 ### Custom endpoints
 
@@ -246,47 +253,9 @@ Variables marked as **managed** are automatically configured by the key manager.
 
 ### Client-specific limitations
 
-#### Windsurf (Codeium)
+#### Tool limits (Windsurf & Antigravity)
 
-**Tool limit:** Windsurf has a [maximum limit of 100 tools](https://docs.windsurf.com/windsurf/cascade/mcp) that Cascade can access at any given time. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **105 tools**, which exceeds this limit.
-
-**Workaround:** Use restricted permissions to stay under the 100-tool limit:
-- With default permissions (all disabled): 26 tools ✅
-- With PII only: 37 tools ✅
-- With PII + writes: 87 tools ✅
-- With all permissions: 105 tools ❌ (exceeds Windsurf limit)
-
-You can configure permissions when adding a key:
-```bash
-npx @iterable/mcp keys add --advanced
-```
-
-Or update an existing key's permissions:
-```bash
-npx @iterable/mcp keys update <key-name> --advanced
-```
-
-**Process persistence:** After switching API keys with `keys activate`, you must **fully restart Windsurf** (quit and reopen the application). Windsurf keeps MCP server processes running in the background, and they don't automatically reload when you switch keys.
-
-#### Antigravity
-
-**Tool limit:** Antigravity has a maximum limit of 100 tools per MCP server. When all permissions are enabled (`ITERABLE_USER_PII=true`, `ITERABLE_ENABLE_WRITES=true`, `ITERABLE_ENABLE_SENDS=true`), the Iterable MCP server exposes **105 tools**, which exceeds this limit.
-
-**Workaround:** Use restricted permissions to stay under the 100-tool limit:
-- With default permissions (all disabled): 26 tools ✅
-- With PII only: 37 tools ✅
-- With PII + writes: 87 tools ✅
-- With all permissions: 105 tools ❌ (exceeds Antigravity limit)
-
-You can configure permissions when adding a key:
-```bash
-npx @iterable/mcp keys add --advanced
-```
-
-Or update an existing key's permissions:
-```bash
-npx @iterable/mcp keys update <key-name> --advanced
-```
+Windsurf ([100-tool limit](https://docs.windsurf.com/windsurf/cascade/mcp)) and Antigravity each allow at most **100 tools** per MCP server. Enabling all permissions (PII, writes, and sends) can push this server over that limit. If tools fail to load, restrict permissions with [`keys add --advanced` / `keys update --advanced`](#api-key-management) (for example, leave sends disabled). See [Installation](#installation) for what each permission enables and the associated risks, and [TOOLS.md](TOOLS.md) for the current tool list.
 
 ## Contributing
 

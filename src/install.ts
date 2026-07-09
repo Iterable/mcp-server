@@ -12,8 +12,10 @@ import { type ApiKeyMetadata, getKeyManager } from "./key-manager.js";
 import { displayKeyDetails, saveKeyInteractive } from "./keys-cli.js";
 import {
   COMMAND_NAME,
+  DOCUMENTATION_URL,
   KEYS_COMMAND_TABLE,
   NPX_PACKAGE_NAME,
+  UI_THEME_HINT,
 } from "./utils/command-info.js";
 import { getKeyStorageMessage } from "./utils/formatting.js";
 
@@ -243,6 +245,10 @@ export const setupMcpServer = async (): Promise<void> => {
       [`${COMMAND_NAME} setup --gemini-cli`, "Configure for Gemini CLI"],
       [`${COMMAND_NAME} setup --windsurf`, "Configure for Windsurf"],
       [`${COMMAND_NAME} setup --antigravity`, "Configure for Antigravity"],
+      [
+        `${COMMAND_NAME} setup --advanced`,
+        "Choose PII, writes, and sends during setup",
+      ],
       [`${COMMAND_NAME} setup --manual`, "Show manual config instructions"],
       [
         `${COMMAND_NAME} setup --cursor --claude-desktop`,
@@ -264,13 +270,15 @@ export const setupMcpServer = async (): Promise<void> => {
 
     const keysTable = createTable({
       head: ["Command", "Description"],
-      colWidths: [45, 40],
+      colWidths: [42, 48],
       style: "normal",
     });
 
     keysTable.push(...KEYS_COMMAND_TABLE);
 
     console.log(keysTable.toString());
+    console.log();
+    console.log(chalk.gray(`  ${UI_THEME_HINT}`));
     console.log();
     console.log();
 
@@ -302,7 +310,8 @@ export const setupMcpServer = async (): Promise<void> => {
         chalk.gray("Enable message sending (default: false)"),
       ],
       ["ITERABLE_MCP_NODE_PATH", chalk.gray("Custom node executable path")],
-      ["ITERABLE_MCP_NPX_PATH", chalk.gray("Custom npx executable path")]
+      ["ITERABLE_MCP_NPX_PATH", chalk.gray("Custom npx executable path")],
+      ["ITERABLE_UI_THEME", chalk.gray("Force terminal colors: dark or light")]
     );
 
     console.log(envTable.toString());
@@ -351,13 +360,11 @@ export const setupMcpServer = async (): Promise<void> => {
   } = await import("./utils/ui.js");
   const chalk = (await import("chalk")).default;
   showIterableLogo(packageJson.version);
-  console.log();
   const ora = (await import("ora")).default;
   const spinner = ora();
 
   try {
     // Step 1: API Key Configuration
-    console.log();
     showSection("API Key Configuration", icons.key);
     console.log();
 
@@ -458,6 +465,9 @@ export const setupMcpServer = async (): Promise<void> => {
             formatKeyValue,
             linkColor,
             showBox: (await import("./utils/ui.js")).showBox,
+            showWarning,
+            showRestartNotice: (await import("./utils/ui.js"))
+              .showRestartNotice,
           },
           keySpinner,
           {
@@ -500,9 +510,15 @@ export const setupMcpServer = async (): Promise<void> => {
         linkColor,
       });
       console.log();
-      showInfo(
-        `To modify permissions, run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}" --advanced`)}`
-      );
+      if (advanced) {
+        showWarning(
+          `--advanced only applies when adding a new key. To change permissions for "${selectedExistingMeta?.name}", run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}" --advanced`)}`
+        );
+      } else {
+        showInfo(
+          `To modify permissions, run: ${chalk.cyan(`${COMMAND_NAME} keys update "${selectedExistingMeta?.name}" --advanced`)}`
+        );
+      }
     } else {
       const keyManager = getKeyManager();
       await keyManager.initialize();
@@ -523,6 +539,9 @@ export const setupMcpServer = async (): Promise<void> => {
             formatKeyValue,
             linkColor,
             showBox: (await import("./utils/ui.js")).showBox,
+            showWarning,
+            showRestartNotice: (await import("./utils/ui.js"))
+              .showRestartNotice,
           },
           keySpinner,
           {
@@ -744,6 +763,7 @@ export const setupMcpServer = async (): Promise<void> => {
       `Try: 'list my Iterable campaigns' in ${toolsList}`,
       `Manage keys with '${COMMAND_NAME} keys list'`,
       `Switch keys with '${COMMAND_NAME} keys activate <name>'`,
+      `Documentation: ${DOCUMENTATION_URL}`,
     ];
 
     showCompletion("Setup Complete!", nextSteps, tips);
