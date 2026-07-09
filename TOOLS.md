@@ -1,4 +1,4 @@
-# Available Iterable MCP Tools (108 tools)
+# Available Iterable MCP Tools (109 tools)
 
 **Legend:**
 - 🔒 = Requires enabling user PII access
@@ -22,7 +22,7 @@
 - **send_campaign** ✏️✉️: Send an existing scheduled campaign immediately
 - **trigger_campaign** ✏️✉️: Trigger a campaign to send to specified lists
 
-## Catalogs (12 tools)
+## Catalogs (13 tools)
 - **bulk_delete_catalog_items** ✏️: Bulk delete catalog items by their IDs
 - **create_catalog** ✏️: Create a new catalog
 - **delete_catalog** ✏️: Delete a catalog
@@ -32,9 +32,10 @@
 - **get_catalog_items**: Get items from a catalog with optional pagination and sorting
 - **get_catalogs**: Get list of all catalogs with optional pagination
 - **partial_update_catalog_item** ✏️: Partial update (PATCH) a catalog item - updates only specified fields
+- **partial_update_catalog_items** ✏️: Bulk partial update (upsert) up to 1000 catalog items. documents maps each item ID to fields to merge; omitted fields on existing items are preserved. Creates items that do not exist yet.
 - **replace_catalog_item** ✏️: Replace (PUT) a catalog item - replaces the entire item with new value
+- **replace_catalog_items** ✏️: Bulk replace (upsert) up to 1000 catalog items. documents maps each item ID to the item's complete new value; fields not included are removed from existing items. Creates items that do not exist yet.
 - **update_catalog_field_mappings** ✏️: Update catalog field mappings (data types). Valid types: boolean, date, geo_location, long, double, object, and string
-- **update_catalog_items** ✏️: Update catalog items
 
 ## Data Export (5 tools)
 - **cancel_export_job** 🔒✏️: Cancel a queued or running export job created with 'start_export_job'. Use the jobId returned from the start export endpoint.

@@ -37,8 +37,8 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
-      - name: Install npm 11+ for OIDC provenance publishing
-        run: corepack enable npm && corepack install -g npm@latest
+      - name: Install npm 11 for OIDC provenance publishing
+        run: corepack enable npm && corepack install -g npm@11
         env:
           COREPACK_ENABLE_STRICT: 0
 
