@@ -8,6 +8,9 @@ import Table from "cli-table3";
 import figlet from "figlet";
 import gradient from "gradient-string";
 
+import { DOCUMENTATION_URL } from "./command-info.js";
+import { isDarkBackground } from "./terminal-theme.js";
+
 // Unified brand/theme palette (Iterable official logo colors)
 // Dots: Purple (top), Pink (left), Cyan (right), Teal (bottom)
 // Light diamond tints used for gradients and subtle accents
@@ -31,13 +34,22 @@ const THEME = {
   // Neutrals
   neutralDark: "#111827", // gray-900
   neutral: "#6B7280", // gray-500
-  neutralLight: "#E5E7EB", // gray-200
+  neutralMid: "#374151", // gray-700 — muted labels on light backgrounds
+  neutralLight: "#E5E7EB", // gray-200 — muted labels on dark backgrounds
   neutralLighter: "#CBD5E1", // slate-300 (better on dark)
   purpleBright: "#C4B5FD", // violet-300 for dark legibility
+
+  // Links — tuned for contrast on each background
+  linkOnDark: "#7DD3FC", // sky-300
+  linkOnLight: "#0369A1", // sky-700
 } as const;
 
+function mutedHex(): string {
+  return isDarkBackground() ? THEME.neutralLight : THEME.neutralMid;
+}
+
 function linkHex(): string {
-  return isDarkBackground() ? THEME.accent : "#0EA5E9"; // sky-500 on light
+  return isDarkBackground() ? THEME.linkOnDark : THEME.linkOnLight;
 }
 
 export function linkColor() {
@@ -85,96 +97,37 @@ export const icons = {
 /**
  * Display the Iterable logo in ANSI art with version info
  */
-// Detect terminal background (best-effort).
-// Order of precedence:
-// 1) Explicit override via ITERABLE_UI_THEME=dark|light
-// 2) COLORFGBG heuristic when available
-// 3) Known terminals (Apple_Terminal defaults to light)
-// 4) Fallback: assume light (safer for macOS default Terminal)
-function isDarkBackground(): boolean {
-  const override = (process.env.ITERABLE_UI_THEME || "").toLowerCase();
-  if (override === "dark") return true;
-  if (override === "light") return false;
-
-  const cfg = process.env.COLORFGBG;
-  if (cfg) {
-    const parts = cfg.split(";");
-    const bg = parseInt(parts[parts.length - 1] || "", 10);
-    if (!Number.isNaN(bg)) {
-      return bg <= 7; // 0-7 dark, 8-15 light
-    }
-  }
-
-  const term = process.env.TERM_PROGRAM;
-  // Heuristics for popular terminals
-  if (term === "Apple_Terminal") return false; // macOS default profile is light
-  if (
-    term === "iTerm.app" ||
-    term === "WezTerm" ||
-    term === "Ghostty" ||
-    term === "vscode"
-  )
-    return true;
-
-  // Fallback: prefer dark (most dev terminals default dark), but allow override via env above
-  return true;
-}
-
 export function showIterableLogo(version: string): void {
   console.clear();
   const dark = isDarkBackground();
   const titleColor = dark ? THEME.neutralLight : THEME.neutralDark;
   const versionColor = dark ? THEME.neutralLighter : THEME.neutralDark;
-  // Gradient colors are chosen inside headerGradient(dark)
 
   const big1 = figlet.textSync("ITERABLE", { font: "ANSI Shadow" }).split("\n");
   const maxLen = Math.max(...big1.map((l) => l.length), 32);
   const grad = headerGradient(dark);
-  const bar = "━".repeat(maxLen);
+  const bar = grad("━".repeat(maxLen));
+  const secondary = (text: string) => chalk.hex(mutedHex())(text);
 
-  const lines: string[] = [];
-  lines.push(grad(bar));
-  big1.forEach((l) => lines.push(grad(l.padEnd(maxLen))));
-  lines.push(grad(bar));
-  lines.push(
+  const content = [
+    bar,
+    ...big1.map((l) => grad(l.padEnd(maxLen))),
+    bar,
     chalk.bold.hex(titleColor)("Iterable MCP Server") +
       "  " +
-      chalk.hex(versionColor)(`v${version}`)
-  );
-  // Beta disclaimer with adaptive contrast
-  if (dark) {
-    const disclaimerHex = THEME.neutral; // slightly muted on dark
-    lines.push(
-      chalk
-        .hex(disclaimerHex)
-        .dim("This is currently in beta and it can make mistakes.")
-    );
-    lines.push(
-      chalk
-        .hex(disclaimerHex)
-        .dim("Please exercise caution when using this with production data.")
-    );
-  } else {
-    const disclaimerHex = THEME.neutralDark; // higher contrast on light backgrounds
-    lines.push(
-      chalk.hex(disclaimerHex)(
-        "This is currently in beta and it can make mistakes."
-      )
-    );
-    lines.push(
-      chalk.hex(disclaimerHex)(
-        "Please exercise caution when using this with production data."
-      )
-    );
-  }
-  lines.push(grad(bar));
-
-  const content = lines.join("\n");
+      chalk.hex(versionColor)(`v${version}`),
+    "",
+    secondary("This is currently in beta and it can make mistakes."),
+    secondary("Please exercise caution when using this with production data."),
+    "",
+    secondary("Documentation:") + " " + linkColor()(DOCUMENTATION_URL),
+    bar,
+  ].join("\n");
 
   console.log(
     boxen(content, {
-      padding: { top: 1, bottom: 1, left: 4, right: 4 },
-      margin: { top: 1, bottom: 1 },
+      padding: { top: 1, bottom: 0, left: 4, right: 4 },
+      margin: { top: 1, bottom: 0 },
       borderStyle: "round",
       borderColor: dark ? THEME.accent : THEME.primary,
     })
@@ -277,6 +230,26 @@ export function showWarning(message: string): void {
 }
 
 /**
+ * Prompt user to restart/reload AI tools after switching the active key.
+ */
+export function showRestartNotice(): void {
+  console.log();
+  showBox(
+    "Action Required",
+    [
+      chalk.yellow(
+        "Restart your AI client or reload its MCP servers to use this key"
+      ),
+      "",
+      chalk.gray(
+        "The MCP server loads the active key when it starts. Some clients require fully quitting and reopening the application."
+      ),
+    ],
+    { icon: icons.zap, theme: "warning" }
+  );
+}
+
+/**
  * Display an info message
  */
 export function showInfo(message: string): void {
@@ -312,6 +285,7 @@ export function createTable(options: {
   return new Table({
     head: head.map((h) => chalk.bold.hex(headColorHex)(h)),
     ...(colWidths && { colWidths }),
+    wordWrap: true,
     style: {
       head: [],
       border: ["magenta"],
@@ -348,7 +322,7 @@ export function showSection(title: string, icon?: string): void {
   const displayTitle = icon && showIcons ? `${icon}  ${title}` : title;
   const dark = isDarkBackground();
   const titleHex = dark ? THEME.purpleBright : THEME.primary;
-  const lineHex = dark ? THEME.neutralLighter : THEME.neutralDark;
+  const lineHex = mutedHex();
   console.log(chalk.bold.hex(titleHex)(displayTitle));
   console.log(
     chalk.hex(lineHex)("─".repeat(Math.min(displayTitle.length + 2, 60)))
@@ -365,11 +339,7 @@ export function showCompletion(
 ): void {
   console.log();
   console.log(chalk.bold.hex(THEME.success)(title));
-  console.log(
-    chalk.hex(isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark)(
-      "─".repeat(50)
-    )
-  );
+  console.log(chalk.hex(mutedHex())("─".repeat(50)));
   console.log();
 
   if (nextSteps && nextSteps.length > 0) {
@@ -387,9 +357,7 @@ export function showCompletion(
   if (tips && tips.length > 0) {
     console.log(chalk.bold.hex(THEME.accent)("Pro Tips"));
     console.log();
-    const muted = chalk.hex(
-      isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark
-    );
+    const muted = chalk.hex(mutedHex());
     tips.forEach((tip) => {
       console.log(muted(`  • ${tip}`));
     });
@@ -410,9 +378,7 @@ export function formatKeyValue(
   value: string,
   color = chalk.white
 ): string {
-  const muted = chalk.hex(
-    isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark
-  );
+  const muted = chalk.hex(mutedHex());
   return `  ${muted(key + ":")} ${color(value)}`;
 }
 
@@ -421,11 +387,7 @@ export function formatKeyValue(
  */
 export function showDivider(style: "light" | "heavy" = "light"): void {
   const char = style === "light" ? "─" : "═";
-  console.log(
-    chalk.hex(isDarkBackground() ? THEME.neutralLighter : THEME.neutralDark)(
-      char.repeat(60)
-    )
-  );
+  console.log(chalk.hex(mutedHex())(char.repeat(60)));
 }
 
 /**
@@ -456,9 +418,7 @@ export function formatKeychainChoiceLabel(
   const activeBadge = isActive ? chalk.bgGreen.black(" ACTIVE ") + " " : "  ";
   const flags = env
     ? (() => {
-        const muted = chalk.hex(
-          isDarkBackground() ? THEME.neutralLighter : THEME.neutral
-        );
+        const muted = chalk.hex(mutedHex());
         const on = (s: string) => chalk.green(s);
         const off = (s: string) => chalk.gray(s);
         const pii = env.ITERABLE_USER_PII === "true" ? on("On") : off("Off");

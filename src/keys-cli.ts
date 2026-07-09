@@ -8,7 +8,13 @@ import inquirer from "inquirer";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { COMMAND_NAME, KEYS_COMMAND_TABLE } from "./utils/command-info.js";
+import {
+  ADVANCED_PERMISSIONS_WARNING,
+  COMMAND_NAME,
+  KEYS_ADVANCED_HINT,
+  KEYS_COMMAND_TABLE,
+  UI_THEME_HINT,
+} from "./utils/command-info.js";
 
 const { dirname, join } = path;
 
@@ -161,7 +167,8 @@ export async function saveKeyInteractive(
     showInfo,
     formatKeyValue,
     linkColor,
-    showBox,
+    showWarning,
+    showRestartNotice,
   } = ui;
 
   // Use local variables so we can reassign if duplicate detected
@@ -202,18 +209,7 @@ export async function saveKeyInteractive(
       const updatedKey = (await keyManager.getKeyMetadata(key.id))!;
 
       if (!options?.skipRestartNotice) {
-        console.log();
-        showBox(
-          "Action Required",
-          [
-            chalk.yellow("Restart your AI tools to use this key"),
-            "",
-            chalk.gray(
-              "The MCP server will automatically load the active key when it starts"
-            ),
-          ],
-          { icon: icons.zap, theme: "warning" }
-        );
+        showRestartNotice();
       }
 
       return updatedKey;
@@ -392,6 +388,10 @@ export async function saveKeyInteractive(
   };
 
   if (options?.advanced) {
+    console.log();
+    showWarning(ADVANCED_PERMISSIONS_WARNING);
+    console.log();
+
     const currentPerms: string[] = [];
     if (selectedEnv.ITERABLE_USER_PII === "true") currentPerms.push("pii");
     if (selectedEnv.ITERABLE_ENABLE_WRITES === "true")
@@ -437,7 +437,7 @@ export async function saveKeyInteractive(
         "Using secure default permissions (PII, Writes, and Sends disabled)"
       );
     }
-    showInfo(`Run with --advanced to configure advanced permissions`);
+    showInfo(KEYS_ADVANCED_HINT);
     console.log();
   }
 
@@ -541,6 +541,8 @@ export async function handleKeysCommand(): Promise<void> {
     showSection,
     showSuccess,
     linkColor,
+    showWarning,
+    showRestartNotice,
   } = await loadUi();
   const spinner = await getSpinner();
 
@@ -678,6 +680,8 @@ export async function handleKeysCommand(): Promise<void> {
           formatKeyValue,
           linkColor,
           showBox,
+          showWarning,
+          showRestartNotice,
         },
         spinner,
         hasAdvancedFlag ? { advanced: true } : undefined
@@ -716,6 +720,8 @@ export async function handleKeysCommand(): Promise<void> {
           formatKeyValue,
           linkColor,
           showBox,
+          showWarning,
+          showRestartNotice,
         },
         spinner,
         { advanced: hasAdvancedFlag }
@@ -767,17 +773,7 @@ export async function handleKeysCommand(): Promise<void> {
         showSuccess(`"${keyToActivate.name}" is now your active API key`);
       }
 
-      showBox(
-        "Action Required",
-        [
-          chalk.yellow("Restart your AI tools to use this key"),
-          "",
-          chalk.gray(
-            "The MCP server will automatically load the active key when it starts"
-          ),
-        ],
-        { icon: icons.zap, theme: "warning" }
-      );
+      showRestartNotice();
       break;
     }
 
@@ -841,7 +837,7 @@ export async function handleKeysCommand(): Promise<void> {
 
       const commandsTable = createTable({
         head: ["Command", "Description"],
-        colWidths: [45, 40],
+        colWidths: [42, 48],
         style: "normal",
       });
 
@@ -852,6 +848,8 @@ export async function handleKeysCommand(): Promise<void> {
 
       console.log(commandsTable.toString());
       console.log();
+      console.log(chalk.gray(`  ${UI_THEME_HINT}`));
+      console.log();
       console.log();
 
       showSection("Examples", icons.fire);
@@ -860,18 +858,25 @@ export async function handleKeysCommand(): Promise<void> {
       console.log(chalk.white.bold("  Add API keys"));
       console.log(
         chalk.gray(
-          "  (Interactive prompts: name, region, API key, PII, Writes, Sends)"
+          "  (Interactive prompts: name, region, and API key; + permissions with --advanced)"
         )
       );
       console.log();
       console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
+      console.log(
+        chalk.cyan(`    ${COMMAND_NAME} keys add --advanced`) +
+          chalk.gray("  # also choose permissions")
+      );
       console.log();
       console.log();
       console.log(chalk.white.bold("  Manage your keys"));
       console.log();
       console.log(chalk.cyan(`    ${COMMAND_NAME} keys list`));
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
       console.log(chalk.cyan(`    ${COMMAND_NAME} keys update production`));
+      console.log(
+        chalk.cyan(`    ${COMMAND_NAME} keys update production --advanced`) +
+          chalk.gray("  # change permissions")
+      );
       console.log(chalk.cyan(`    ${COMMAND_NAME} keys activate production`));
       console.log(
         chalk.cyan(

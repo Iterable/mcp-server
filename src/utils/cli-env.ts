@@ -43,6 +43,8 @@ export async function loadUi(): Promise<any> {
       showIterableLogo: () => {},
       showSection: () => {},
       showSuccess: () => {},
+      showWarning: () => {},
+      showRestartNotice: () => {},
       linkColor: () => (s: string) => s,
     };
   }
