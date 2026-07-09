@@ -13,9 +13,10 @@ import {
   GetCatalogItemsParamsSchema,
   GetCatalogsParamsSchema,
   PartialUpdateCatalogItemParamsSchema,
+  PartialUpdateCatalogItemsParamsSchema,
   ReplaceCatalogItemParamsSchema,
+  ReplaceCatalogItemsParamsSchema,
   UpdateCatalogFieldMappingsParamsSchema,
-  UpdateCatalogItemParamsSchema,
 } from "@iterable/api";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
@@ -30,10 +31,18 @@ export function createCatalogTools(client: IterableClient): Tool[] {
       execute: (params) => client.createCatalog(params),
     }),
     createTool({
-      name: "update_catalog_items",
-      description: "Update catalog items",
-      schema: UpdateCatalogItemParamsSchema,
-      execute: (params) => client.updateCatalogItems(params),
+      name: "partial_update_catalog_items",
+      description:
+        "Bulk partial update catalog items (up to 1000). Merges document fields per item ID.",
+      schema: PartialUpdateCatalogItemsParamsSchema,
+      execute: (params) => client.partialUpdateCatalogItems(params),
+    }),
+    createTool({
+      name: "replace_catalog_items",
+      description:
+        "Bulk replace catalog items (up to 1000). Each item becomes only the document fields provided.",
+      schema: ReplaceCatalogItemsParamsSchema,
+      execute: (params) => client.replaceCatalogItems(params),
     }),
     createTool({
       name: "get_catalog_item",
