@@ -61,6 +61,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: version
         run: |
+          git checkout -- .
           pnpm version ${{ github.event.inputs.version_type }}
           echo "new_version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           git push --follow-tags

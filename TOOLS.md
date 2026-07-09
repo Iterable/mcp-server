@@ -32,9 +32,9 @@
 - **get_catalog_items**: Get items from a catalog with optional pagination and sorting
 - **get_catalogs**: Get list of all catalogs with optional pagination
 - **partial_update_catalog_item** ✏️: Partial update (PATCH) a catalog item - updates only specified fields
-- **partial_update_catalog_items** ✏️: Bulk partial update (upsert) up to 1000 catalog items. documents maps each item ID to fields to merge; omitted fields on existing items are preserved. Creates items that do not exist yet.
+- **partial_update_catalog_items** ✏️: Bulk partial update catalog items (up to 1000). Merges document fields per item ID.
 - **replace_catalog_item** ✏️: Replace (PUT) a catalog item - replaces the entire item with new value
-- **replace_catalog_items** ✏️: Bulk replace (upsert) up to 1000 catalog items. documents maps each item ID to the item's complete new value; fields not included are removed from existing items. Creates items that do not exist yet.
+- **replace_catalog_items** ✏️: Bulk replace catalog items (up to 1000). Each item becomes only the document fields provided.
 - **update_catalog_field_mappings** ✏️: Update catalog field mappings (data types). Valid types: boolean, date, geo_location, long, double, object, and string
 
 ## Data Export (5 tools)

@@ -43,6 +43,10 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Verify generated docs are committed
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 22
+        run: git diff --exit-code
+
       - name: Unit tests
         run: pnpm test:unit
 
