@@ -1,5 +1,7 @@
 # Iterable MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2FIterable%2Fmcp-server.svg)](https://mcptoplist.com/server/glama%2FIterable%2Fmcp-server)
+
 [![npm version](https://img.shields.io/npm/v/@iterable/mcp.svg)](https://www.npmjs.com/package/@iterable/mcp)
 
 Talk to your Iterable data using natural language. Ask questions or give instructions like *"How many campaigns did we send last week?"*, *"Show me my most recent templates"*, or *"Build me a beautiful email template that does the following..."* and get instant answers without writing code or navigating dashboards.
