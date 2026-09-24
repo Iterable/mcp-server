@@ -1,4 +1,4 @@
-# Available Iterable MCP Tools (109 tools)
+# Available Iterable MCP Tools (118 tools)
 
 **Legend:**
 - 🔒 = Requires enabling user PII access
@@ -50,11 +50,20 @@
 - **track_bulk_events** 🔒✏️✉️: Track multiple events in a single request for better performance
 - **track_event** 🔒✏️✉️: Track a custom event for a user
 
-## Experiments (4 tools)
+## Experiments (13 tools)
+- **cancel_experiment** ✏️: Cancel a running or winner_found campaign experiment without declaring a winner.
+- **copy_experiment_variant** ✏️: Copy a template into a new variant on a draft or ready campaign experiment.
+- **create_experiment** ✏️: Create a draft campaign experiment. The campaign template becomes the control.
+- **declare_experiment_winner** ✏️✉️: Declare a winning variant and end a running or winner_found campaign experiment.
+- **delete_experiment** ✏️: Delete a draft, ready, or errored campaign experiment.
 - **get_experiment**: Get detailed information about a specific experiment by ID, including variants summary and constraints
 - **get_experiment_metrics**: Get experiment metrics for A/B testing analysis (currently supports email experiments only)
+- **get_experiment_totals**: Get lifetime send and conversion totals for a campaign experiment. Holdout is omitted, missing counts are 0, and lift and confidence are not included.
+- **get_experiment_trends**: Get the performance time series for a campaign experiment. Provide both startDateTime and endDateTime, or omit both to use the run window. The span is at most 31 days; a longer default window is clipped to the last 31 days.
 - **get_experiment_variants**: Get variant content for an experiment, including subject lines, preheaders, HTML source, and plain text
 - **list_experiments**: List experiments with optional filtering by campaign, status, and date range. Supports pagination.
+- **start_experiment** ✏️✉️: Start a draft or ready campaign experiment.
+- **update_experiment_settings** ✏️: Update settings on a draft or ready campaign experiment. Omit a field to leave it unchanged.
 
 ## Journeys (2 tools)
 - **get_journeys**: Get journeys (workflows) with optional pagination and state filtering

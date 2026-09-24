@@ -15,19 +15,24 @@ const EXPECTED_TOOLS = [
   "bulk_update_users",
   "cancel_campaign",
   "cancel_email",
+  "cancel_experiment",
   "cancel_export_job",
   "cancel_in_app",
   "cancel_push",
   "cancel_sms",
   "cancel_web_push",
   "cancel_whatsapp",
+  "copy_experiment_variant",
   "create_blast_campaign",
+  "create_experiment",
   "create_triggered_campaign",
   "create_catalog",
   "create_list",
   "create_snippet",
   "deactivate_triggered_campaign",
+  "declare_experiment_winner",
   "delete_catalog",
+  "delete_experiment",
   "delete_catalog_item",
   "delete_list",
   "delete_snippet",
@@ -48,6 +53,8 @@ const EXPECTED_TOOLS = [
   "get_embedded_messages",
   "get_experiment",
   "get_experiment_metrics",
+  "get_experiment_totals",
+  "get_experiment_trends",
   "get_experiment_variants",
   "get_export_files",
   "get_export_jobs",
@@ -89,6 +96,7 @@ const EXPECTED_TOOLS = [
   "send_sms_template_proof",
   "send_web_push",
   "send_whatsapp",
+  "start_experiment",
   "start_export_job",
   "subscribe_to_list",
   "subscribe_user_by_email",
@@ -105,6 +113,7 @@ const EXPECTED_TOOLS = [
   "replace_catalog_items",
   "update_email",
   "update_email_template",
+  "update_experiment_settings",
   "update_inapp_template",
   "update_push_template",
   "update_sms_template",
@@ -177,7 +186,7 @@ describe("Tool Modules", () => {
 
       // Should have a reasonable number of tools (at least 107, allowing for growth)
       expect(allTools.length).toBeGreaterThanOrEqual(107);
-      expect(allTools.length).toBeLessThan(115); // Sanity check
+      expect(allTools.length).toBeLessThan(130); // Sanity check
     });
 
     it("should have tools from all categories", () => {
