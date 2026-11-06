@@ -14,15 +14,14 @@ import {
   UpdateUserParamsSchema,
   UpdateUserSubscriptionsParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
 /**
  * Create all user management tools
  */
-export function createUserTools(client: IterableClient): Tool[] {
+export function createUserTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "get_user_by_email",

@@ -19,11 +19,10 @@ import {
   SendCampaignParamsSchema,
   TriggerCampaignParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createCampaignTools(client: IterableClient): Tool[] {
+export function createCampaignTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "get_campaigns",

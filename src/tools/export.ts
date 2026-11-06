@@ -9,12 +9,11 @@ import {
   GetExportJobsParamsSchema,
   StartExportJobParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createExportTools(client: IterableClient): Tool[] {
+export function createExportTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "get_available_export_data_types",

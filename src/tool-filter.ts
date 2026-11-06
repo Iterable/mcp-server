@@ -163,7 +163,10 @@ export const SEND_TOOLS: Set<string> = new Set([
  * Filter tools based on configuration restrictions
  * Uses safe-list approach: only allow explicitly safe tools
  */
-export function filterTools(tools: Tool[], config: McpServerConfig): Tool[] {
+export function filterTools<T extends Tool>(
+  tools: T[],
+  config: McpServerConfig
+): T[] {
   return tools.filter(
     (tool) =>
       (config.allowUserPii || NON_PII_TOOLS.has(tool.name)) &&

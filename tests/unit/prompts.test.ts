@@ -139,6 +139,16 @@ describe("MCP Prompts", () => {
     });
   });
 
+  function promptText(
+    result: ReturnType<typeof generatePromptMessage>
+  ): string {
+    const content = result.messages[0]?.content;
+    if (!content || content.type !== "text") {
+      throw new Error("expected text prompt content");
+    }
+    return content.text;
+  }
+
   describe("generatePromptMessage", () => {
     it("should generate message for prompt without arguments", () => {
       const result = generatePromptMessage("get-campaigns");
@@ -154,7 +164,7 @@ describe("MCP Prompts", () => {
 
       expect(message.content).toHaveProperty("type", "text");
       expect(message.content).toHaveProperty("text");
-      expect(message.content.text).toContain("get_campaigns tool");
+      expect(promptText(result)).toContain("get_campaigns tool");
     });
 
     it("should generate message for prompt with arguments", () => {
@@ -165,11 +175,9 @@ describe("MCP Prompts", () => {
       const message = result.messages[0];
       if (!message) return;
 
-      expect(message.content.text).toContain(
-        "track_event tool with parameters"
-      );
-      expect(message.content.text).toContain('"email": "test@example.com"');
-      expect(message.content.text).toContain('"eventName": "test_event"');
+      expect(promptText(result)).toContain("track_event tool with parameters");
+      expect(promptText(result)).toContain('"email": "test@example.com"');
+      expect(promptText(result)).toContain('"eventName": "test_event"');
     });
 
     it("should convert prompt names back to tool names", () => {
@@ -180,7 +188,7 @@ describe("MCP Prompts", () => {
       const message = result.messages[0];
       if (!message) return;
 
-      expect(message.content.text).toContain("get_user_by_email tool"); // converted back from get-user-by-email
+      expect(promptText(result)).toContain("get_user_by_email tool"); // converted back from get-user-by-email
     });
 
     it("should handle export prompt name conversion", () => {
@@ -191,7 +199,7 @@ describe("MCP Prompts", () => {
       });
       const message = result.messages[0];
       if (!message) return;
-      expect(message.content.text).toContain("export_data tool");
+      expect(promptText(result)).toContain("export_data tool");
     });
 
     it("should filter out undefined and empty string arguments", () => {
@@ -206,10 +214,10 @@ describe("MCP Prompts", () => {
       const message = result.messages[0];
       if (!message) return; // Type guard
 
-      expect(message.content.text).toContain('"email": "test@example.com"');
-      expect(message.content.text).toContain('"valid": "value"');
-      expect(message.content.text).not.toContain("optional");
-      expect(message.content.text).not.toContain("empty");
+      expect(promptText(result)).toContain('"email": "test@example.com"');
+      expect(promptText(result)).toContain('"valid": "value"');
+      expect(promptText(result)).not.toContain("optional");
+      expect(promptText(result)).not.toContain("empty");
     });
 
     it("should handle different argument types correctly", () => {
@@ -224,10 +232,10 @@ describe("MCP Prompts", () => {
       const message = result.messages[0];
       if (!message) return; // Type guard
 
-      expect(message.content.text).toContain('"stringArg": "test"');
-      expect(message.content.text).toContain('"numberArg": 42');
-      expect(message.content.text).toContain('"booleanArg": true');
-      expect(message.content.text).toContain('"objectArg": {"nested":"value"}');
+      expect(promptText(result)).toContain('"stringArg": "test"');
+      expect(promptText(result)).toContain('"numberArg": 42');
+      expect(promptText(result)).toContain('"booleanArg": true');
+      expect(promptText(result)).toContain('"objectArg": {"nested":"value"}');
     });
   });
 });

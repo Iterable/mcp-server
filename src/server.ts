@@ -14,7 +14,6 @@ import {
   ListToolsRequestSchema,
   McpError,
   Prompt,
-  Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
@@ -29,6 +28,7 @@ import {
   HEADER_USER_AGENT,
 } from "./http-headers.js";
 import { generatePromptMessage, generatePrompts } from "./prompts.js";
+import type { IterableTool } from "./schema-utils.js";
 import { setupGracefulShutdown } from "./shutdown.js";
 import { filterTools } from "./tool-filter.js";
 import { createAllTools } from "./tools/index.js";
@@ -52,7 +52,7 @@ const packageJson = JSON.parse(
 export class IterableMcpServer {
   private server: Server;
   private iterableClient!: IterableClient;
-  private tools!: Tool[];
+  private tools!: IterableTool[];
   private prompts!: Prompt[];
 
   // Since we are using the stdio transport, we assume a global session
@@ -126,7 +126,7 @@ export class IterableMcpServer {
             toolName: name,
           },
           async () => {
-            return await (tool.handler as any)(args || {});
+            return await tool.handler(args ?? {});
           }
         );
       } catch (error) {

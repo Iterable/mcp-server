@@ -17,8 +17,18 @@ import {
   IterableResponseValidationError,
 } from "@iterable/api";
 import { logger as _logger } from "@iterable/api";
-import { ErrorCode, McpError, Tool } from "@modelcontextprotocol/sdk/types.js";
+import {
+  type CallToolResult,
+  ErrorCode,
+  McpError,
+  type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+
+/** SDK tool metadata plus the local executor. The wire Tool type has no handler. */
+export type IterableTool = Tool & {
+  handler: (args: unknown) => Promise<CallToolResult>;
+};
 
 /**
  * Tool configuration for MCP tool creation
@@ -35,8 +45,8 @@ interface ToolConfig<TSchema extends z.ZodType> {
  */
 export function createTool<TSchema extends z.ZodType>(
   config: ToolConfig<TSchema>
-): Tool {
-  const handler = async (args: unknown) => {
+): IterableTool {
+  const handler = async (args: unknown): Promise<CallToolResult> => {
     try {
       // Validate input with schema
       const params = config.schema.parse(args);
