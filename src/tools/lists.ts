@@ -13,11 +13,10 @@ import {
   SubscribeToListParamsSchema,
   UnsubscribeFromListParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createListTools(client: IterableClient): Tool[] {
+export function createListTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "get_lists",

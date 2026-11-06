@@ -16,11 +16,10 @@ import {
   ListExperimentsParamsSchema,
   UpdateExperimentSettingsParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createExperimentTools(client: IterableClient): Tool[] {
+export function createExperimentTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "list_experiments",

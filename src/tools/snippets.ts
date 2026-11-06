@@ -9,12 +9,11 @@ import {
   GetSnippetParamsSchema,
   UpdateSnippetParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createSnippetTools(client: IterableClient): Tool[] {
+export function createSnippetTools(client: IterableClient): IterableTool[] {
   // WORKAROUND: Cursor rejects valid JSON Schema with "type": ["string", "number"].
   // We accept strings only and convert numeric strings back to numbers.
   // See: https://github.com/cursor/cursor/issues/3778

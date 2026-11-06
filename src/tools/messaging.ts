@@ -17,10 +17,9 @@ import {
   SendWebPushParamsSchema,
   SendWhatsAppParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
 // Messaging channel configuration
 interface MessagingChannelConfig {
@@ -80,8 +79,8 @@ const MESSAGING_CHANNELS: MessagingChannelConfig[] = [
 function createMessagingToolsForChannel(
   config: MessagingChannelConfig,
   client: IterableClient
-): Tool[] {
-  const tools: Tool[] = [
+): IterableTool[] {
+  const tools: IterableTool[] = [
     createTool({
       name: `send_${config.channel}`,
       description: `Send ${config.displayName} to user`,
@@ -107,7 +106,7 @@ function createMessagingToolsForChannel(
 /**
  * Create all messaging tools using the factory pattern
  */
-export function createMessagingTools(client: IterableClient): Tool[] {
+export function createMessagingTools(client: IterableClient): IterableTool[] {
   return [
     // Generate tools for all messaging channels
     ...MESSAGING_CHANNELS.flatMap((config) =>

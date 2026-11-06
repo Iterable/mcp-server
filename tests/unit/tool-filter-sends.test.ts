@@ -7,7 +7,6 @@ const mkTool = (name: string): Tool => ({
   name,
   description: name,
   inputSchema: { type: "object", properties: {} },
-  execute: async () => ({}),
 });
 
 describe("filterTools with allowSends", () => {

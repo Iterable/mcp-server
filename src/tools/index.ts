@@ -4,8 +4,8 @@
  */
 
 import type { IterableClient } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
+import type { IterableTool } from "../schema-utils.js";
 // Import all tool creators
 import { createCampaignTools } from "./campaigns.js";
 import { createCatalogTools } from "./catalogs.js";
@@ -27,7 +27,7 @@ import { createWebhookTools } from "./webhooks.js";
  */
 export const TOOL_CREATORS_BY_CATEGORY: {
   category: string;
-  creator: (client: IterableClient) => Tool[];
+  creator: (client: IterableClient) => IterableTool[];
 }[] = [
   { category: "Campaigns", creator: createCampaignTools },
   { category: "Catalogs", creator: createCatalogTools },
@@ -47,6 +47,6 @@ export const TOOL_CREATORS_BY_CATEGORY: {
 /**
  * Create all Iterable MCP tools
  */
-export function createAllTools(client: IterableClient): Tool[] {
+export function createAllTools(client: IterableClient): IterableTool[] {
   return TOOL_CREATORS_BY_CATEGORY.flatMap(({ creator }) => creator(client));
 }

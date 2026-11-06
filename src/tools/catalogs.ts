@@ -18,11 +18,10 @@ import {
   ReplaceCatalogItemsParamsSchema,
   UpdateCatalogFieldMappingsParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createCatalogTools(client: IterableClient): Tool[] {
+export function createCatalogTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "create_catalog",

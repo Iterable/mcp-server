@@ -7,11 +7,10 @@ import {
   GetWebhooksParamsSchema,
   UpdateWebhookParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createWebhookTools(client: IterableClient): Tool[] {
+export function createWebhookTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "get_webhooks",

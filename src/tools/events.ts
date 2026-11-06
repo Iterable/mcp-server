@@ -9,11 +9,10 @@ import {
   TrackBulkEventsParamsSchema,
   TrackEventParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
-export function createEventTools(client: IterableClient): Tool[] {
+export function createEventTools(client: IterableClient): IterableTool[] {
   return [
     createTool({
       name: "track_event",

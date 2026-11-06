@@ -19,10 +19,9 @@ import {
   UpsertPushTemplateParamsSchema,
   UpsertSMSTemplateParamsSchema,
 } from "@iterable/api";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { createTool } from "../schema-utils.js";
+import { createTool, type IterableTool } from "../schema-utils.js";
 
 // Template type configuration
 interface TemplateTypeConfig {
@@ -85,7 +84,7 @@ const TEMPLATE_TYPES: TemplateTypeConfig[] = [
 function createTemplateToolsForType(
   config: TemplateTypeConfig,
   client: IterableClient
-): Tool[] {
+): IterableTool[] {
   const tools = [
     createTool({
       name: `get_${config.type}_template`,
@@ -127,7 +126,7 @@ function createTemplateToolsForType(
   return tools;
 }
 
-export function createTemplateTools(client: IterableClient): Tool[] {
+export function createTemplateTools(client: IterableClient): IterableTool[] {
   return [
     // General template tools
     createTool({
