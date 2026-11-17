@@ -265,13 +265,6 @@ See the [contributing guidelines](CONTRIBUTING.md) for development setup, buildi
 
 See the [security policy](SECURITY.md) for reporting vulnerabilities.
 
-## Beta Feature Reminder
-
-Iterable's MCP server is currently in beta. MCP functionality may change, be
-suspended, or be discontinued at any time without notice. This software is
-provided "as is" and is open source and ready for you to experiment with. For
-more information, refer to [Iterable Beta Terms](https://iterable.com/trust/beta-terms/).
-
 ## License
 
 This project is licensed under the MIT License. See the [license](LICENSE.md) for details.
